@@ -1,0 +1,22 @@
+Доступ:
+https://software.tbank.ru/account/voicekit/keys/
+danil.adzhiev
+uiQuaewu5u!
+
+Ключи для авторизации:
+API_KEY=BPRYjBnciG+G0VNhF+k/VwR63pscNwfX0WWoI0lx3pA=
+SECRET_KEY=hGJDANurJmonY91RrV0EL6BOLpAkpebwlokuA3OdN4E=
+
+Файл:
+uri = "storage://s3.api.tinkoff.ai/inbound/2024-12-11 11-37-49 +79153315033.mp3"
+MPEG_AUDIO
+rate_hertz = 8000
+num_channels = 2
+
+Документация:
+https://software.tbank.ru/docs/voicekit/
+
+GitHub:
+https://github.com/Tinkoff/voicekit-examples/tree/master/nodejs
+
+
