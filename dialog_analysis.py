@@ -36,7 +36,7 @@ async def main(delay: int):
         print("Шаг 4: Получаю диалоги для анализа из БД")
         fixed_records = fetch_data(
             status="fixed",
-            fields=["id", "dialogue", "data", "user_id", "entity_id"],
+            fields=["id", "dialogue", "data", "user_id", "entity_id", "date"],
             analytics_mode=True
         )
 
@@ -52,7 +52,7 @@ async def main(delay: int):
         print("Шаг 7: Провожу анализ диалогов согласно критериям")
         final_records = await analyze_criteria(
             classified_records,
-            max_concurrent_requests=100,
+            max_concurrent_requests=500,
             retry_delay=0.1,
             max_retries=3
         )
