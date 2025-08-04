@@ -21,6 +21,7 @@ def clean_llm_content(raw_content: str) -> str:
     # Убираем лишние \n, оставляя их внутри JSON
     content_without_backticks = re.sub(r'(?<!\\)\n+', ' ', content_without_backticks)
 
+
     try:
         parsed_json = json.loads(content_without_backticks)
         return json.dumps(parsed_json, ensure_ascii=False, indent=4)

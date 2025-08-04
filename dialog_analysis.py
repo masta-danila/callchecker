@@ -6,6 +6,7 @@ from db_dialog_uploader import upload_recognized_dialogs
 from dialog_classifier import classify_dialogs
 from criteria_analyzer import analyze_criteria
 from db_data_uploader import upload_records_from_dict
+from debug_utils import save_debug_json, convert_datetime_to_string
 
 
 async def main(delay: int):
@@ -47,7 +48,7 @@ async def main(delay: int):
             retry_delay=0.1,
             max_retries=3
         )
-        # print(json.dumps(classified_records, indent=4, ensure_ascii=False))
+        print(json.dumps(convert_datetime_to_string(classified_records), indent=4, ensure_ascii=False))
 
         print("Шаг 7: Провожу анализ диалогов согласно критериям")
         final_records = await analyze_criteria(
@@ -56,11 +57,13 @@ async def main(delay: int):
             retry_delay=0.1,
             max_retries=3
         )
-        print(json.dumps(final_records, indent=4, ensure_ascii=False))
-        #
+        
+        # Сохраняем отладочные данные
+        save_debug_json(final_records, "final_records")
+        
         # print("Шаг 8: Загружаю итоговые данные в БД")
         # upload_records_from_dict(final_records, status='ready')
-        #
+        
         print("Все шаги успешно выполнены! Ожидаю перед следующим циклом...")
         await asyncio.sleep(delay)
 

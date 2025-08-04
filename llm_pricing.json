@@ -4,6 +4,11 @@
     "1M cached** input tokens": 1.25,
     "1M output tokens": 10
   },
+  "gpt-4.1-nano": {
+    "1M input tokens": 0.1,
+    "1M cached** input tokens": 0.025,
+    "1M output tokens": 0.4
+  },
     "gpt-4o-mini": {
     "1M input tokens": 0.150,
     "1M cached** input tokens": 0.075,
