@@ -3,68 +3,85 @@ from functools import partial
 from llm_router import llm_request
 import ast
 
-def calculate_evaluation(evaluation1, evaluation2):
+def calculate_evaluation(*evaluations):
     """
-    Рассчитывает результирующую оценку по правилам:
-    - Если обе None: None
-    - Если одна None: возвращаем вторую
-    - Если обе не None: среднее (float)
+    Рассчитывает результирующую оценку для любого количества значений по правилам:
+    - Если все None: None
+    - Если есть не None значения: среднее арифметическое (float)
+    
+    :param evaluations: Любое количество оценок (могут быть None)
+    :return: Среднее значение или None
     """
-    if evaluation1 is None and evaluation2 is None:
+    # Фильтруем только не None значения
+    valid_evaluations = [eval for eval in evaluations if eval is not None]
+    
+    if not valid_evaluations:
         return None
-    if evaluation1 is None:
-        return evaluation2
-    if evaluation2 is None:
-        return evaluation1
-    return round((float(evaluation1) + float(evaluation2)) / 2, 2)
+    
+    # Вычисляем среднее арифметическое
+    average = sum(float(eval) for eval in valid_evaluations) / len(valid_evaluations)
+    return round(average, 2)
 
-async def sum_text_blocks(text1, evaluation1, text2, evaluation2, max_size):
+async def sum_text_blocks(text_evaluation_pairs, max_size):
     """
-    Суммирует два блока текста/списка/других структур данных через LLM или возвращает text2, если text1 пустой.
+    Суммирует любое количество блоков текста через LLM.
 
-    :param text1: Первый блок текста, списка или другой структуры данных для суммирования.
-    :param evaluation1: Оценка первого блока (число или None).
-    :param text2: Второй блок текста, списка или другой структуры данных для суммирования.
-    :param evaluation2: Оценка второго блока (число или None).
+    :param text_evaluation_pairs: Список кортежей (text, evaluation) для суммирования.
+                                  Например: [("текст1", 4.5), ("текст2", None), ("текст3", 3.8)]
     :param max_size: Максимально допустимый размер итогового блока в количестве слов.
     :return: Словарь с ключами:
-        - "text_result": строка с суммированным (объединённым) блоком данных;
-        - "evaluation_result": итоговая оценка (среднее двух, одна из оценок, или None по правилам).
+        - "text_result": строка с суммированным блоком данных;
+        - "evaluation_result": итоговая средняя оценка всех блоков.
     """
-    evaluation_result = calculate_evaluation(evaluation1, evaluation2)
-
-    if text1 == '':
+    if not text_evaluation_pairs:
+        return {"text_result": "", "evaluation_result": None}
+    
+    # Извлекаем тексты и оценки
+    texts = [pair[0] for pair in text_evaluation_pairs]
+    evaluations = [pair[1] for pair in text_evaluation_pairs]
+    
+    # Фильтруем пустые тексты
+    non_empty_texts = [text for text in texts if text and text.strip()]
+    
+    if not non_empty_texts:
+        return {"text_result": "", "evaluation_result": calculate_evaluation(*evaluations)}
+    
+    if len(non_empty_texts) == 1:
         return {
-            "text_result": text2,
-            "evaluation_result": evaluation_result
+            "text_result": non_empty_texts[0],
+            "evaluation_result": calculate_evaluation(*evaluations)
         }
-
+    
+    # Создаем промпт для суммирования множественных блоков
     prompt = (
-        "Выполни суммирование двух блоков текста/списков/других структур данных. ВАЖНО: сохрани структуру и тип составляющих блоков в итоговом ответе. "
+        f"Выполни суммирование {len(non_empty_texts)} блоков текста/списков/других структур данных."
+        "ВАЖНО: сохрани структуру и тип составляющих блоков в итоговом ответе."
+        "То есть если в исходных данных были тексты, то результатом должен быть общий текст, если списки — то результатом должен быть общий список и т.д."
         "Повторяющиеся или пересекающиеся пункты должны быть объединены."
-        "Если в исходных данных были тексты, то результатом должен быть общий текст, если списки — то результатом должен быть общий список и т.д. "
-        f"Итоговый блок не должен превышать {max_size} слов. Если суммированный блок превышает {max_size} слов, постарайтесь уплотнить его, сохраняя все основные идеи и смысл обоих блоков, не теряя важной информации.\n"
-        "Блок 1:\n"
-        f"{text1}\n"
-        "Блок 2:\n"
-        f"{text2}\n"
-        "Ответ выдай строго в виде словаря следующего синтаксиса (без доп символов и кавычек, синтаксис словаря должен быть с\n"
+        f"Итоговый блок не должен превышать {max_size} слов. Если суммированный блок превышает {max_size} слов, постарайтесь уплотнить его, сохраняя все основные идеи и смысл всех блоков, не теряя важной информации.\n"
+    )
+    
+    # Добавляем все блоки в промпт
+    for i, text in enumerate(non_empty_texts, 1):
+        prompt += f"Блок {i}:\n{text}"
+    
+    prompt += (
+        "Ответ выдай строго в виде словаря следующего синтаксиса (без доп символов и кавычек, синтаксис словаря должен быть с "
         "таким же набором фигурных скобок и двойных кавычек, обрамлять словарь в доп символы запрещено):\n"
-        "{\"text\": \"суммирующий блок\",\n"
+        "{\"text\": \"суммирующий блок\"}\n"
         "Кроме словаря вставлять что-то в ответ запрещено.\n"
         "Кавычки внутри ответа на промпт экранируй.\n"
     )
+    print(prompt)
 
-    messages = [
-        {"role": "user", "content": prompt}
-    ]
+    messages = [{"role": "user", "content": prompt}]
+    
     loop = asyncio.get_running_loop()
     response = await loop.run_in_executor(
         None,
-        partial(llm_request,
-                model="gpt-4o-mini",
-                messages=messages)
+        partial(llm_request, model="gpt-4o-mini", messages=messages)
     )
+    
     try:
         raw = response["content"].strip()
         result_dict = ast.literal_eval(raw)
@@ -75,35 +92,22 @@ async def sum_text_blocks(text1, evaluation1, text2, evaluation2, max_size):
 
     return {
         "text_result": text_result,
-        "evaluation_result": evaluation_result
+        "evaluation_result": calculate_evaluation(*evaluations)
     }
+
+
+
 # Пример использования
 if __name__ == "__main__":
     async def main():
-        text1 = """
-            - осуществляют разработку сайтов;
-            - планируют использовать SEO и контекстную рекламу для продвижения;
-            - интересуются уникальными текстами для разделов сайта;
-            - имеют 13 сайтов;
-            - на одном из сайтов установили авито.ру как конкурента;
-            - планируют открыть ИП в мае;
-            - предпочитают оформить сайт вначале на физическое лицо;
-            - рассматривают возможность патентования сайта;
-            - обсуждают использование старых доменов для передачи веса;
-            - требуют уникальное название для нового сайта; 
-        """
-        evaluation1 = 5
-        text2 = """
-            - у компании есть 13 сайтов;
-            - активны в сфере дверной продукции;
-            - настраивают индексацию сайта;
-            - планируют встречу с SEO специалистом;
-            - сталкиваются с проблемой креативности в названиях доменов.
-        """
-        evaluation2 = 4
-        max_size = 500
-
-        result = await sum_text_blocks(text1, evaluation1, text2, evaluation2, max_size)
-        print(result)
+        # Пример суммирования множественных блоков
+        text_eval_pairs = [
+            ("- Клиент ранее взаимодействовал с юридическими вопросами, связанными с патентами.\n- Есть представление о стоимости патентования.\n- Оформление сайта на физическое лицо.\n", 5),
+            ("- Разработка сайта начинается с сайта, который уже существует.\n- Имеется один основной сайт, привязанный к другому. \n", 5),
+            ("- Уже осуществляется регистрация доменов.\n- Наличие у клиента нескольких сайтов.\n- Потребность в уникальном названии для новых доменов.\n- Наличие требований к соглашению при регистрации домена.\n- Интерес к продвижению и контекстной рекламе.", 3.5)
+        ]
+        
+        result = await sum_text_blocks(text_eval_pairs, 500)
+        print("Результат суммирования 5 блоков:", result)
 
     asyncio.run(main())
