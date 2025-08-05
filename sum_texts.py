@@ -72,7 +72,6 @@ async def sum_text_blocks(text_evaluation_pairs, max_size):
         "Кроме словаря вставлять что-то в ответ запрещено.\n"
         "Кавычки внутри ответа на промпт экранируй.\n"
     )
-    print(prompt)
 
     messages = [{"role": "user", "content": prompt}]
     
