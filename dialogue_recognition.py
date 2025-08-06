@@ -14,10 +14,10 @@ async def process_data():
     )
 
     if not data_records:
-        print("Нет загруженных файлов для обработки.")
+        print("Нет загруженных файлов для распознавания.")
         return
 
-    print("Начинается обработка аудиофайлов...")
+    print("Начинается распознавание аудиофайлов...")
     updated_data_records = await process_and_store_dialogs(
         data_records,
         max_concurrent_requests=50,
@@ -25,13 +25,13 @@ async def process_data():
         request_delay=1
     )
 
-    print("Загрузка обработанных данных обратно в базу...")
+    print("Загрузка распознанных данных обратно в базу...")
     upload_recognized_dialogs(
         updated_data_records,
         status='recognized'
     )
 
-    print("Обработка завершена!")
+    print("Распознавание завершено!")
 
 
 async def main(sleep_time: int):

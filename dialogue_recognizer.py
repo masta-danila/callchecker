@@ -15,7 +15,7 @@ async def process_record(record):
         print(f"Пропущена запись с неполными метаданными: {record}")
         return None
 
-    print(f"Обрабатывается файл: {uri}")
+    print(f"Распознается файл: {uri}")
 
     try:
         raw_data = await recognition_by_uri.recognize_speech(
@@ -25,7 +25,7 @@ async def process_record(record):
             sample_rate_hertz
         )
     except Exception as e:
-        print(f"Ошибка при обработке {uri}: {e}")
+        print(f"Ошибка при распознавании {uri}: {e}")
         return None
 
     if not raw_data:

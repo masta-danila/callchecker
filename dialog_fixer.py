@@ -51,7 +51,6 @@ async def fix_dialog(dialog_text: str) -> dict:
     )
 
     # Разбираем JSON-ответ
-    print("Raw response from chatgpt_request:", response)
     response_data = json.loads(response["content"])
     fixed_text = response_data["text"]
     manager_id = response_data["manager_id"]

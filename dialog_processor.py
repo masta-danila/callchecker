@@ -29,13 +29,13 @@ async def process_and_store_dialogs(
                 except Exception as e:
                     if attempt < retries - 1:
                         print(
-                            f"Ошибка при обработке записи (id={record.get('id', 'unknown')}), "
+                            f"Ошибка при распознавании записи (id={record.get('id', 'unknown')}), "
                             f"попытка {attempt + 1} из {retries}: {e}"
                         )
                         await asyncio.sleep(request_delay)
                     else:
                         print(
-                            f"Не удалось обработать запись (id={record.get('id', 'unknown')}) "
+                            f"Не удалось распознать запись (id={record.get('id', 'unknown')}) "
                             f"после {retries} попыток. Ошибка: {e}"
                         )
                         return None

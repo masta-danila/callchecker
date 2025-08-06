@@ -26,7 +26,7 @@ async def main(delay: int):
         # Сохраняем отладочные данные
         save_debug_json(records, "records")
 
-        print("Шаг 2: Обрабатываю тексты диалогов")
+        print("Шаг 2: Исправляю тексты диалогов")
         processed_records = await process_dialogs(
             records,
             max_concurrent_requests=50,

@@ -34,8 +34,13 @@ async def process_dialog(row, semaphore, delay, retries) -> dict | None:
     :return: Результат обработки диалога.
     """
     async with semaphore:
+        print(f"Начинаю исправление диалога {row['id']}")
         await asyncio.sleep(delay)  # Задержка перед каждым запросом
-        return await safe_analyze_dialog(row["dialogue"], retries=retries)
+        result = await safe_analyze_dialog(row["dialogue"], retries=retries)
+        if result:
+            cost = result.get('cost', 0)
+            print(f"Завершено исправление диалога {row['id']}, стоимость: {cost}")
+        return result
 
 
 async def process_dialogs(
@@ -90,7 +95,7 @@ async def process_dialogs(
             result = results[index]
             if isinstance(result, Exception) or result is None:
                 failed_requests += 1
-                print(f"Ошибка при обработке диалога {row['id']}")
+                print(f"Ошибка при исправлении диалога {row['id']}")
             else:
                 # Обновляем текст диалога результатом анализа
                 row["dialogue"] = result["content"]
@@ -99,7 +104,7 @@ async def process_dialogs(
         processed_records[table] = {"records": processed_table}
 
     total_processed = sum(len(data["records"]) for data in processed_records.values())
-    print(f"Успешно обработано: {total_processed}, Ошибок: {failed_requests}")
+    print(f"Успешно исправлено: {total_processed}, Ошибок: {failed_requests}")
 
     return processed_records
 
@@ -145,5 +150,3 @@ if __name__ == "__main__":
     processed_dialogues = asyncio.run(
         process_dialogs(sample_data, max_concurrent_requests=50, request_delay=0.1, retries=3)
     )
-    print("Обработанные диалоги:")
-    print(json.dumps(processed_dialogues, indent=4, ensure_ascii=False))

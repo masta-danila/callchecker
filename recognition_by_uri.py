@@ -67,7 +67,7 @@ async def recognize_speech(uri, encoding, num_channels, sample_rate_hertz):
             return response
 
     finally:
-        print("Готово.")
+        pass
 
 
 if __name__ == "__main__":
