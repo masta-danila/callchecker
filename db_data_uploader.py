@@ -1,6 +1,6 @@
 import json
 from db_client import get_db_client
-from upload.insert_db_item import check_and_insert_entity
+from insert_db_item import check_and_insert_entity
 
 
 def upload_records_from_dict(data_dict: dict, status: str):
