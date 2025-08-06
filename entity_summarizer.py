@@ -31,6 +31,9 @@ async def summarize_entity_descriptions(
     # Создаем копию ключей для безопасной итерации
     table_names = list(data_dict.keys())
     
+    # Список задач для параллельного выполнения
+    tasks = []
+    
     for table_name in table_names:
         table_data = data_dict.get(table_name, {})
         records = table_data.get("records", [])
@@ -77,13 +80,19 @@ async def summarize_entity_descriptions(
                         # Добавляем экземпляр критерия из записи
                         criteria_to_process[criterion_id]["instances"].append(criterion)
             
-            # Если есть критерии для обработки, обновляем данные сущности
+            # Если есть критерии для обработки, добавляем задачу в список
             if criteria_to_process:
-                print(f"Обрабатываю сущность {entity_id} в таблице {table_name}: {len(criteria_to_process)} критериев")
-                await _update_entity_data(
+                print(f"Планирую обработку сущности {entity_id} в таблице {table_name}: {len(criteria_to_process)} критериев")
+                tasks.append(_update_entity_data(
                     data_dict, table_name, entity_id, criteria_to_process, 
                     max_text_size, max_concurrent_requests, request_delay, retries
-                )
+                ))
+    
+    # Выполняем все задачи параллельно
+    if tasks:
+        print(f"Запускаю параллельную обработку {len(tasks)} сущностей...")
+        await asyncio.gather(*tasks)
+        print("Параллельная обработка сущностей завершена!")
     
     return data_dict
 
@@ -205,98 +214,23 @@ async def _update_entity_data(data_dict, table_name, entity_id, criteria_to_proc
 # Пример использования
 if __name__ == "__main__":
     async def main():
-        # Пример данных с уже существующими entities
-        test_data = {
-            "advertpro": {
-                "records": [
-                    {
-                        "id": "call_1",
-                        "entity_id": 1,
-                        "data": {
-                            "criteria": [
-                                {
-                                    "id": 1,
-                                    "name": "Качество обслуживания",
-                                    "text": "Хорошее обслуживание клиентов в первом звонке",
-                                    "evaluation": 4.5
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "id": "call_2", 
-                        "entity_id": 1,
-                        "data": {
-                            "criteria": [
-                                {
-                                    "id": 1,
-                                    "name": "Качество обслуживания",
-                                    "text": "Отличная работа с клиентами во втором звонке",
-                                    "evaluation": 5.0
-                                },
-                                {
-                                    "id": 2,
-                                    "name": "Профессионализм",
-                                    "text": "Высокий уровень знаний продукта",
-                                    "evaluation": 4.8
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "id": "call_3",
-                        "entity_id": 2, 
-                        "data": {
-                            "criteria": [
-                                {
-                                    "id": 1,
-                                    "name": "Качество обслуживания",
-                                    "text": "Среднее качество обслуживания в третьем звонке",
-                                    "evaluation": 3.5
-                                }
-                            ]
-                        }
-                    }
-                ],
-                "criteria": [
-                    {
-                        "id": 1,
-                        "name": "Качество обслуживания",
-                        "include_in_entity_description": True
-                    },
-                    {
-                        "id": 2,
-                        "name": "Профессионализм", 
-                        "include_in_entity_description": True
-                    }
-                ],
-                "entities": [
-                    {
-                        "id": 1,
-                        "data": {
-                            "criteria": [
-                                {
-                                    "id": 1,
-                                    "name": "Качество обслуживания",
-                                    "text": "Уже существующая оценка качества обслуживания",
-                                    "evaluation": 4.0
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "id": 2,
-                        "data": {}
-                    }
-                ]
-            }
-        }
+        # Загружаем реальные данные из json_tests/analyzed_records.json
+        import json
+        
+        with open('json_tests/analyzed_records.json', 'r', encoding='utf-8') as f:
+            test_data = json.load(f)
+        
+        print("Загружены данные из analyzed_records.json:")
+        for table_name, table_data in test_data.items():
+            records_count = len(table_data.get("records", []))
+            entities_count = len(table_data.get("entities", []))
+            print(f"  {table_name}: {records_count} records, {entities_count} entities")
         
         print("=== ТЕСТ: Суммирование критериев сущностей ===")
         
         result = await summarize_entity_descriptions(test_data)
         
-        import json
-        print(json.dumps(result, indent=4, ensure_ascii=False))
+        print("\n=== РЕЗУЛЬТАТ ===")
+        print("Обработка завершена успешно!")
 
     asyncio.run(main())
