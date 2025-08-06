@@ -100,7 +100,12 @@ def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict =
             conn.commit()
             print(f"Сущность с id {entity_id} добавлена в таблицу {table_name}_entities.")
         else:
-            print(f"Сущность с id {entity_id} уже существует в таблице {table_name}_entities.")
+            # Если запись существует, обновляем данные
+            update_query = f"UPDATE {table_name}_entities SET data = %s WHERE id = %s"
+            data_json = json.dumps(entity_data) if entity_data else '{}'
+            cursor.execute(update_query, (data_json, entity_id))
+            conn.commit()
+            print(f"Сущность с id {entity_id} обновлена в таблице {table_name}_entities.")
     except Exception as e:
         conn.rollback()
         print(f"Ошибка при проверке/добавлении сущности: {e}")
