@@ -1,6 +1,3 @@
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db_client import get_db_client
 
 
@@ -29,6 +26,24 @@ def create_tables(*table_names):
         END $$;
     """
 
+    # Создание ENUM типа для crm_entity_type, если он ещё не существует
+    create_entity_type_enum_query = """
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'crm_entity_type_enum') THEN
+                CREATE TYPE crm_entity_type_enum AS ENUM ('LEAD', 'DEAL', 'CONTACT', 'COMPANY');
+            END IF;
+        END $$;
+    """
+
+    # Создание ENUM типа для call_type, если он ещё не существует
+    create_call_type_enum_query = """
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'call_type_enum') THEN
+                CREATE TYPE call_type_enum AS ENUM ('1', '2', '3', '4');
+            END IF;
+        END $$;
+    """
+
     try:
         with get_db_client() as conn:
             with conn.cursor() as cur:
@@ -37,6 +52,10 @@ def create_tables(*table_names):
                 print("Тип status_enum проверен или создан.")
                 cur.execute(create_llm_type_enum_query)
                 print("Тип llm_type_enum проверен или создан.")
+                cur.execute(create_entity_type_enum_query)
+                print("Тип crm_entity_type_enum проверен или создан.")
+                cur.execute(create_call_type_enum_query)
+                print("Тип call_type_enum проверен или создан.")
 
                 for table_name in table_names:
                     # -------------------------------------------
@@ -50,16 +69,36 @@ def create_tables(*table_names):
                     cur.execute(f"DROP TABLE IF EXISTS {table_name}_entities CASCADE;")
 
                     # -------------------------------------------
-                    # Создаём таблицу сущностей (entities) первой, чтобы можно было установить внешний ключ в основной таблице
+                    # Создаём таблицу сущностей (entities) первой, чтобы можно была установить внешний ключ в основной таблице
                     # -------------------------------------------
                     create_entities_table = f"""
                         CREATE TABLE {table_name}_entities (
-                            id INTEGER PRIMARY KEY,  -- id не автоинкремент; должен совпадать с entity_id из основной таблицы
-                            data JSONB               -- Дополнительные данные о сущности
+                            id SERIAL PRIMARY KEY,                          -- Внутренний ID (автоинкремент)
+                            crm_entity_type crm_entity_type_enum NOT NULL,  -- Тип сущности (LEAD, DEAL, CONTACT, COMPANY)
+                            entity_id INTEGER NOT NULL,                     -- ID сущности из Bitrix24
+                            title VARCHAR(255),                             -- Название/заголовок сущности
+                            name VARCHAR(255),                              -- Имя
+                            lastName VARCHAR(255),                          -- Фамилия
+                            data JSONB DEFAULT '{{}}',                      -- Дополнительные данные о сущности
+                            UNIQUE(crm_entity_type, entity_id)              -- Уникальность комбинации тип+ID
                         );
                     """
                     cur.execute(create_entities_table)
                     print(f"Таблица {table_name}_entities успешно создана.")
+
+                    # -------------------------------------------
+                    # Создаём таблицу пользователей (users)
+                    # -------------------------------------------
+                    create_users_table = f"""
+                        CREATE TABLE {table_name}_users (
+                            id INTEGER PRIMARY KEY,             -- user_id из основной таблицы записей
+                            name VARCHAR(255),                  -- Имя пользователя
+                            last_name VARCHAR(255),             -- Фамилия пользователя
+                            uf_department JSONB                 -- Отделы (массив)
+                        );
+                    """
+                    cur.execute(create_users_table)
+                    print(f"Таблица {table_name}_users успешно создана.")
 
                     # -------------------------------------------
                     # Создаём основную таблицу с внешним ключом на таблицу сущностей
@@ -73,9 +112,15 @@ def create_tables(*table_names):
                             status status_enum NOT NULL,        -- Обязательное поле (ENUM для статусов)
                             audio_metadata JSONB,               -- Необязательное поле (Метаинформация об аудио)
                             user_id INTEGER,                    -- Целое число (ID пользователя)
-                            entity_id INTEGER NOT NULL,         -- Обязательное поле (ID сущности)
+                            phone_number VARCHAR(50),           -- Необязательное поле (Номер телефона)
+                            entity_id INTEGER,                  -- Необязательное поле (ID сущности, может быть NULL)
+                            call_type call_type_enum,           -- Тип звонка (1, 2, 3, 4)
                             FOREIGN KEY (entity_id)
                                 REFERENCES {table_name}_entities(id)
+                                ON DELETE SET NULL,
+                            FOREIGN KEY (user_id)
+                                REFERENCES {table_name}_users(id)
+                                ON DELETE SET NULL
                         );
                     """
                     cur.execute(create_main_table_query)
@@ -146,6 +191,43 @@ def create_tables(*table_names):
                     """
                     cur.execute(create_categories_criteria_table)
                     print(f"Таблица {table_name}_categories_criteria успешно создана.")
+
+                    # -------------------------------------------
+                    # Создаём индексы для оптимизации
+                    # -------------------------------------------
+                    create_indexes_query = f"""
+                        -- Индексы для таблицы entities
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_entities_type_id 
+                            ON {table_name}_entities(crm_entity_type, entity_id);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_entities_type 
+                            ON {table_name}_entities(crm_entity_type);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_entities_entity_id 
+                            ON {table_name}_entities(entity_id);
+                        
+                        -- Индексы для таблицы users
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_users_id 
+                            ON {table_name}_users(id);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_users_name 
+                            ON {table_name}_users(name);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_users_last_name 
+                            ON {table_name}_users(last_name);
+                        
+                        -- Индексы для основной таблицы
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_date 
+                            ON {table_name}(date);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_status 
+                            ON {table_name}(status);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_user_id 
+                            ON {table_name}(user_id);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_entity_id 
+                            ON {table_name}(entity_id);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_status_date 
+                            ON {table_name}(status, date);
+                    """
+                    cur.execute(create_indexes_query)
+                    print(f"Индексы для {table_name} успешно созданы.")
+                    
+                    print(f"Все таблицы и индексы для {table_name} успешно созданы.")
 
     except Exception as e:
         print(f"Ошибка при создании таблиц: {e}")

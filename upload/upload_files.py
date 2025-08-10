@@ -99,7 +99,7 @@ if __name__ == "__main__":
     audio_folder = "audio"
 
     # Список таблиц для записи
-    db_tables = ["advertpro", "test"]
+    db_tables = ["advertpro"]
 
     # Запуск обработки файлов
     process_audio_files(audio_folder, db_tables)

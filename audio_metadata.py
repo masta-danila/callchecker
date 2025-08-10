@@ -51,6 +51,7 @@ def get_audio_metadata(file_path):
 
 
 # Пример использования
-file_path = "audio/2025-01-29 16-32-34 +79067571133.mp3"  # Укажите путь к вашему файлу
-audio_details = get_audio_metadata(file_path)
-print(audio_details)
+if __name__ == "__main__":
+    file_path = "bitrix24/downloads/advertpro/493027.mp3"  # Укажите путь к вашему файлу
+    audio_details = get_audio_metadata(file_path)
+    print(audio_details)

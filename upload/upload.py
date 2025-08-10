@@ -13,7 +13,7 @@ def upload_file_to_storage(file_path: str) -> str:
 
     access_key = os.getenv('API_KEY')
     secret_key = os.getenv('SECRET_KEY')
-    print(access_key)
+    # print(access_key)
 
     if not access_key or not secret_key:
         raise Exception("Ошибка: Переменные окружения API_KEY и SECRET_KEY не установлены.")
@@ -46,8 +46,8 @@ def upload_file_to_storage(file_path: str) -> str:
                 Body=file_data
             )
 
-        # Печатаем "сырые" данные ответа S3
-        print("S3 API Response:", response)
+        # # Печатаем "сырые" данные ответа S3
+        # print("S3 API Response:", response)
 
         # Формируем URI
         uri = f"storage://{endpoint_url.replace('https://', '')}/{bucket_name}/{file_name}"
@@ -59,7 +59,7 @@ def upload_file_to_storage(file_path: str) -> str:
 
 # Пример использования
 if __name__ == "__main__":
-    file_path = "audio/2025-01-29 16-32-34 +79067571133.mp3"
+    file_path = "bitrix24/downloads/advertpro/493027.mp3"
 
     try:
         uri = upload_file_to_storage(file_path)

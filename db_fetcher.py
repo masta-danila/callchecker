@@ -1,4 +1,5 @@
 import json
+import os
 from db_client import get_db_client
 
 
@@ -19,7 +20,127 @@ def get_tables_with_status_column():
     return tables
 
 
-def fetch_data(status: str, fields: list[str], analytics_mode: bool) -> dict:
+def fetch_data_with_portal_settings(status: str = None, fields: list[str] = None, analytics_mode: bool = False) -> dict:
+    """
+    Получает данные из БД с учетом индивидуальных настроек days_back для каждого портала.
+    
+    :param status: Статус записей для фильтрации
+    :param fields: Поля для выборки 
+    :param analytics_mode: Режим аналитики
+    :return: Словарь с данными по порталам
+    """
+    # Читаем конфигурацию порталов
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bitrix24", "bitrix_portals.json")
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except Exception as e:
+        print(f"Ошибка чтения конфигурации порталов: {e}")
+        return {}
+
+    default_days_back = config.get('default_settings', {}).get('days_back', 3)
+    portals = config.get('portals', [])
+    
+    # Создаем мапинг: portal_name -> days_back
+    portal_days_map = {}
+    for portal_config in portals:
+        if isinstance(portal_config, str):
+            portal_url = portal_config
+            portal_days_back = default_days_back
+        else:
+            portal_url = portal_config.get('url', '')
+            portal_days_back = portal_config.get('days_back', default_days_back)
+        
+        try:
+            portal_name = portal_url.split('/')[2].split('.')[0]
+            portal_days_map[portal_name] = portal_days_back
+        except:
+            continue
+
+    # Получаем данные для каждого портала с его индивидуальными настройками
+    result = {}
+    conn = get_db_client()
+    cursor = conn.cursor()
+    
+    tables = get_tables_with_status_column()
+    
+    for table in tables:
+        # Проверяем, есть ли для этой таблицы настройки портала
+        portal_days_back = portal_days_map.get(table, default_days_back)
+        
+        # Формируем список колонок для выборки
+        if fields is None:
+            columns_sql = "*"
+        else:
+            columns_sql = ", ".join(fields)
+            if analytics_mode and "entity_id" not in fields:
+                columns_sql += ", entity_id"
+
+        # Формируем WHERE условие с учетом days_back для портала
+        where_conditions = []
+        params = []
+        
+        if status is not None:
+            where_conditions.append("status = %s")
+            params.append(status)
+        
+        # Добавляем фильтр по дате с индивидуальным days_back
+        where_conditions.append(f"date >= CURRENT_DATE - INTERVAL '{portal_days_back} days'")
+        
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+        query = f"SELECT {columns_sql} FROM {table} {where_clause};"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        # Получаем имена колонок
+        column_names = [desc[0] for desc in cursor.description]
+
+        # Преобразуем строки в словари
+        records = []
+        for row in rows:
+            record = dict(zip(column_names, row))
+            records.append(record)
+
+        result[table] = {"records": records}
+
+        # Если включен режим аналитики, загружаем связанные данные
+        if analytics_mode:
+            # Загружаем категории
+            try:
+                cursor.execute(f"SELECT * FROM {table}_categories")
+                categories = [dict(zip([desc[0] for desc in cursor.description], row)) 
+                            for row in cursor.fetchall()]
+                result[table]["categories"] = categories
+            except:
+                result[table]["categories"] = []
+
+            # Загружаем критерии  
+            try:
+                cursor.execute(f"SELECT * FROM {table}_criteria")
+                criteria = [dict(zip([desc[0] for desc in cursor.description], row))
+                          for row in cursor.fetchall()]
+                result[table]["criteria"] = criteria
+            except:
+                result[table]["criteria"] = []
+
+            # Загружаем сущности
+            try:
+                cursor.execute(f"SELECT * FROM {table}_entities")
+                entities = [dict(zip([desc[0] for desc in cursor.description], row))
+                          for row in cursor.fetchall()]
+                result[table]["entities"] = entities
+            except:
+                result[table]["entities"] = []
+
+        print(f"Таблица {table}: загружено {len(records)} записей за последние {portal_days_back} дней")
+
+    cursor.close()
+    conn.close()
+    return result
+
+
+def fetch_data(status: str = None, fields: list[str] = None, analytics_mode: bool = False) -> dict:
     """
     Получает из всех таблиц (где присутствует колонка 'status')
     записи с указанным значением 'status', выбирая только указанные в `fields` колонки.
@@ -43,9 +164,12 @@ def fetch_data(status: str, fields: list[str], analytics_mode: bool) -> dict:
             ...
         }
 
-    :param status: Значение в колонке 'status', по которому выбираем строки (например, 'uploaded').
+    :param status: Значение в колонке 'status', по которому выбираем строки (например, 'uploaded'). 
+                   Если None, то выбираются все записи независимо от статуса.
     :param fields: Список колонок, которые нужно вернуть (например, ['id', 'dialogue']).
+                   Если None, то возвращаются все колонки.
     :param analytics_mode: Флаг загрузки дополнительных данных.
+    :param days_back: Количество дней назад для фильтрации по дате (опционально).
     :return: Итоговая структура с данными.
     """
     tables = get_tables_with_status_column()
@@ -57,13 +181,31 @@ def fetch_data(status: str, fields: list[str], analytics_mode: bool) -> dict:
 
     for table in tables:
         # Формируем список колонок для выборки
-        columns_sql = ", ".join(fields)
-        # Если analytics_mode=True и 'entity_id' не указан явно, добавляем его для последующей выборки
-        if analytics_mode and "entity_id" not in fields:
-            columns_sql += ", entity_id"
+        if fields is None:
+            columns_sql = "*"
+        else:
+            columns_sql = ", ".join(fields)
+            # Если analytics_mode=True и 'entity_id' не указан явно, добавляем его для последующей выборки
+            if analytics_mode and "entity_id" not in fields:
+                columns_sql += ", entity_id"
 
-        query = f"SELECT {columns_sql} FROM {table} WHERE status = %s;"
-        cursor.execute(query, (status,))
+        # Формируем WHERE условие
+        where_conditions = []
+        params = []
+        
+        if status is not None:
+            where_conditions.append("status = %s")
+            params.append(status)
+        
+
+        
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+            query = f"SELECT {columns_sql} FROM {table} {where_clause};"
+        else:
+            query = f"SELECT {columns_sql} FROM {table};"
+        
+        cursor.execute(query, params)
         rows = cursor.fetchall()
 
         records = []

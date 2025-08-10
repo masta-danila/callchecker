@@ -1,0 +1,17 @@
+{
+  "portals": [
+    {
+      "url": "https://advertpro.bitrix24.ru/rest/9/np1dxwlp78i5pg0j",
+      "days_back": 4
+    }
+  ],
+  "entityTypes": {
+    "LEAD": 1,
+    "DEAL": 2,
+    "CONTACT": 3,
+    "COMPANY": 4
+  },
+  "default_settings": {
+    "days_back": 3
+  }
+}
