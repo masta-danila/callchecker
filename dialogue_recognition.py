@@ -9,7 +9,7 @@ async def process_data():
     print("Загрузка данных из базы...")
     data_records = fetch_data(
         status="uploaded",
-        fields=["id", "dialogue", "audio_metadata"],
+        fields=["id", "dialogue", "audio_metadata", "status"],
         analytics_mode=False
     )
 
@@ -28,7 +28,7 @@ async def process_data():
     print("Загрузка распознанных данных обратно в базу...")
     upload_recognized_dialogs(
         updated_data_records,
-        status='recognized'
+        default_status='recognized'  # Fallback статус, если в записи нет поля 'status'
     )
 
     print("Распознавание завершено!")

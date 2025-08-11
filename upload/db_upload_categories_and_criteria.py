@@ -1,5 +1,10 @@
 import os
 import json
+import sys
+
+# Добавляем корневую папку в путь для импорта модулей
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from db_client import get_db_client
 
 

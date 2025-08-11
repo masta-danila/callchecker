@@ -99,6 +99,8 @@ async def process_dialogs(
             else:
                 # Обновляем текст диалога результатом анализа
                 row["dialogue"] = result["content"]
+                # Обновляем статус на 'fixed' после успешной обработки
+                row["status"] = "fixed"
                 processed_table.append(row)
             index += 1
         processed_records[table] = {"records": processed_table}

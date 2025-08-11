@@ -27,6 +27,7 @@ async def process_record(record):
     except Exception as e:
         print(f"Ошибка при распознавании {uri}: {e}")
         return None
+    # print("Сырые данные:", raw_data)
 
     if not raw_data:
         print(f"Не удалось получить сырые данные для URI: {uri}")
@@ -34,20 +35,27 @@ async def process_record(record):
 
     dialogue = dialog_builder.build_dialog_from_response(raw_data)
     if not dialogue:
-        print(f"Не удалось построить диалог для URI: {uri}")
-        return None
+        print(f"Не удалось построить диалог для URI: {uri}, устанавливаю пустой диалог")
+        dialogue = ""
+        # Устанавливаем статус 'empty' для пустых диалогов
+        record["status"] = "empty"
+    else:
+        # Устанавливаем статус 'recognized' для успешно распознанных диалогов
+        record["status"] = "recognized"
 
-    # Если всё прошло успешно, добавляем диалог в запись и возвращаем её
+    # Добавляем диалог в запись и возвращаем её (либо успешный, либо пустой)
     record["dialogue"] = dialogue
-    print(f"Диалог для URI {uri} успешно сохранен.")
+    if dialogue:
+        print(f"Диалог для URI {uri} успешно сохранен со статусом 'recognized'.")
+    else:
+        print(f"Для URI {uri} установлен пустой диалог со статусом 'empty'.")
     return record
 
 
 if __name__ == "__main__":
     sample_record = {
         "audio_metadata": {
-            "uri": "storage://s3.api.tinkoff.ai/inbound/2025-02-19 13-38-04 +79255064127.mp3",
-            "duration": 68.76,
+            "uri": "storage://s3.api.tinkoff.ai/inbound/493235.mp3",
             "encoding": "MPEG_AUDIO",
             "num_channels": 2,
             "sample_rate_hertz": 8000

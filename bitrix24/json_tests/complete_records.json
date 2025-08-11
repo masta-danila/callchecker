@@ -1,1 +1,523 @@
-{}
+{
+    "advertpro": {
+        "records": [
+            {
+                "id": "493443",
+                "date": "2025-08-11T09:37:28+03:00",
+                "user_id": "13961",
+                "phone_number": "+79629459988",
+                "entity_id": "27175",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493439",
+                "date": "2025-08-11T09:42:01+03:00",
+                "user_id": "2747",
+                "phone_number": "89157897990",
+                "entity_id": "11853",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493441",
+                "date": "2025-08-11T09:42:55+03:00",
+                "user_id": "2747",
+                "phone_number": "89157897990",
+                "entity_id": "11853",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493445",
+                "date": "2025-08-11T10:06:31+03:00",
+                "user_id": "2747",
+                "phone_number": "89157897990",
+                "entity_id": "11853",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493447",
+                "date": "2025-08-11T10:24:27+03:00",
+                "user_id": "11009",
+                "phone_number": "79958874667",
+                "entity_id": "27575",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493451",
+                "date": "2025-08-11T10:52:31+03:00",
+                "user_id": "11009",
+                "phone_number": "79267560347",
+                "entity_id": "27579",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493453",
+                "date": "2025-08-11T10:52:49+03:00",
+                "user_id": "11009",
+                "phone_number": "79267560347",
+                "entity_id": "27579",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493455",
+                "date": "2025-08-11T10:57:21+03:00",
+                "user_id": "11009",
+                "phone_number": "+79856371660",
+                "entity_id": "347877",
+                "call_type": "1",
+                "crm_entity_type": "LEAD"
+            },
+            {
+                "id": "493457",
+                "date": "2025-08-11T10:58:24+03:00",
+                "user_id": "11009",
+                "phone_number": "+79160790082",
+                "entity_id": "347873",
+                "call_type": "1",
+                "crm_entity_type": "LEAD"
+            },
+            {
+                "id": "493459",
+                "date": "2025-08-11T10:59:02+03:00",
+                "user_id": "11009",
+                "phone_number": "79271887113",
+                "entity_id": "27573",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493461",
+                "date": "2025-08-11T10:59:30+03:00",
+                "user_id": "11009",
+                "phone_number": "79271873521",
+                "entity_id": "27571",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493463",
+                "date": "2025-08-11T11:01:04+03:00",
+                "user_id": "2747",
+                "phone_number": "+79652002225",
+                "entity_id": "26757",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493465",
+                "date": "2025-08-11T11:02:02+03:00",
+                "user_id": "2747",
+                "phone_number": "+79652002225",
+                "entity_id": "26757",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493469",
+                "date": "2025-08-11T11:02:10+03:00",
+                "user_id": "11009",
+                "phone_number": "+79685744664",
+                "entity_id": "27549",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493467",
+                "date": "2025-08-11T11:03:03+03:00",
+                "user_id": "2747",
+                "phone_number": "89157897990",
+                "entity_id": "11853",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493473",
+                "date": "2025-08-11T11:03:07+03:00",
+                "user_id": "2747",
+                "phone_number": "+79652002225",
+                "entity_id": "13845",
+                "call_type": "2",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493471",
+                "date": "2025-08-11T11:07:23+03:00",
+                "user_id": "11009",
+                "phone_number": "89163665560",
+                "entity_id": "27517",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493477",
+                "date": "2025-08-11T11:17:11+03:00",
+                "user_id": "11009",
+                "phone_number": "+79214204015",
+                "entity_id": "27513",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493479",
+                "date": "2025-08-11T11:18:16+03:00",
+                "user_id": "11009",
+                "phone_number": "79268898956",
+                "entity_id": "27501",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493481",
+                "date": "2025-08-11T11:20:00+03:00",
+                "user_id": "11009",
+                "phone_number": "+79885578683",
+                "entity_id": "27387",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493489",
+                "date": "2025-08-11T11:27:29+03:00",
+                "user_id": "13961",
+                "phone_number": "+79772716777",
+                "entity_id": "21623",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493487",
+                "date": "2025-08-11T11:28:49+03:00",
+                "user_id": "11009",
+                "phone_number": "79141743433",
+                "entity_id": "27375",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493491",
+                "date": "2025-08-11T11:43:19+03:00",
+                "user_id": "13961",
+                "phone_number": "+79166498804",
+                "entity_id": "14739",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493495",
+                "date": "2025-08-11T12:22:28+03:00",
+                "user_id": "15437",
+                "phone_number": "+79192181111",
+                "entity_id": "16749",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493497",
+                "date": "2025-08-11T12:41:02+03:00",
+                "user_id": "13961",
+                "phone_number": "+79031651374",
+                "entity_id": "1808",
+                "call_type": "2",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493499",
+                "date": "2025-08-11T12:46:37+03:00",
+                "user_id": "15437",
+                "phone_number": "+79166905581",
+                "entity_id": "17649",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493501",
+                "date": "2025-08-11T12:47:55+03:00",
+                "user_id": "11009",
+                "phone_number": "+79281117184",
+                "entity_id": "19331",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493505",
+                "date": "2025-08-11T12:53:29+03:00",
+                "user_id": "13961",
+                "phone_number": "+79150550151",
+                "entity_id": "16199",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493503",
+                "date": "2025-08-11T12:59:51+03:00",
+                "user_id": "2747",
+                "phone_number": "89157897990",
+                "entity_id": "11853",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493507",
+                "date": "2025-08-11T13:02:21+03:00",
+                "user_id": "11009",
+                "phone_number": "79267560347",
+                "entity_id": "27579",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493511",
+                "date": "2025-08-11T13:04:13+03:00",
+                "user_id": "11009",
+                "phone_number": "79267560347",
+                "entity_id": "27579",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493513",
+                "date": "2025-08-11T13:06:31+03:00",
+                "user_id": "11009",
+                "phone_number": "+79818228269",
+                "entity_id": "27419",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            }
+        ],
+        "entities": [
+            {
+                "entity_type_id": 3,
+                "entity_id": 26757,
+                "title": null,
+                "name": "Сергей",
+                "lastName": "телефон на который звонить",
+                "id": 169
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27175,
+                "title": null,
+                "name": "Ален",
+                "lastName": "(@alengafizov)",
+                "id": 170
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27419,
+                "title": null,
+                "name": "Владислав",
+                "lastName": null,
+                "id": 1
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 19331,
+                "title": null,
+                "name": "Андрей",
+                "lastName": null,
+                "id": 302
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27501,
+                "title": null,
+                "name": "Амир",
+                "lastName": null,
+                "id": 2
+            },
+            {
+                "entity_type_id": 1,
+                "entity_id": 347877,
+                "title": "+7 985 637-16-60 - Входящий звонок",
+                "name": null,
+                "lastName": null,
+                "id": 3
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27571,
+                "title": null,
+                "name": "Владимир",
+                "lastName": null,
+                "id": 26
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 11853,
+                "title": null,
+                "name": "Закир",
+                "lastName": "Сергей",
+                "id": 174
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27513,
+                "title": null,
+                "name": "Александра",
+                "lastName": "Vyaz",
+                "id": 64
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 14739,
+                "title": null,
+                "name": "Павел",
+                "lastName": null,
+                "id": 27
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 13845,
+                "title": null,
+                "name": "Сергей",
+                "lastName": "личный",
+                "id": 178
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 16749,
+                "title": null,
+                "name": "Андрей Коростелев",
+                "lastName": "Коростелев",
+                "id": 96
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27549,
+                "title": null,
+                "name": "Георгий",
+                "lastName": null,
+                "id": 8
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27375,
+                "title": null,
+                "name": "Михаил",
+                "lastName": null,
+                "id": 180
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 17649,
+                "title": null,
+                "name": "Денис",
+                "lastName": "",
+                "id": 31
+            },
+            {
+                "entity_type_id": 1,
+                "entity_id": 347873,
+                "title": "+7 916 079-00-82 - Входящий звонок",
+                "name": null,
+                "lastName": null,
+                "id": 181
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27387,
+                "title": null,
+                "name": "Алексей",
+                "lastName": "2",
+                "id": 182
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27573,
+                "title": null,
+                "name": "Владимир",
+                "lastName": null,
+                "id": 183
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27579,
+                "title": null,
+                "name": "Виктория",
+                "lastName": null,
+                "id": 184
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 16199,
+                "title": null,
+                "name": "Василий",
+                "lastName": null,
+                "id": 54
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 1808,
+                "title": null,
+                "name": "Андрей",
+                "lastName": "Рогожкин",
+                "id": 56
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 21623,
+                "title": null,
+                "name": "Александр",
+                "lastName": "",
+                "id": 59
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27517,
+                "title": null,
+                "name": "Кристина",
+                "lastName": null,
+                "id": 80
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27575,
+                "title": null,
+                "name": "Анна ",
+                "lastName": null,
+                "id": 188
+            }
+        ],
+        "users": [
+            {
+                "id": "15437",
+                "NAME": "Андрей",
+                "LAST_NAME": "Зенков",
+                "UF_DEPARTMENT": [
+                    2863
+                ]
+            },
+            {
+                "id": "11009",
+                "NAME": "Сергей",
+                "LAST_NAME": "Конышев",
+                "UF_DEPARTMENT": [
+                    1223,
+                    2331
+                ]
+            },
+            {
+                "id": "13961",
+                "NAME": "Андрей",
+                "LAST_NAME": "Маркин",
+                "UF_DEPARTMENT": [
+                    2863
+                ]
+            },
+            {
+                "id": "2747",
+                "NAME": "Сергей",
+                "LAST_NAME": "Солодов",
+                "UF_DEPARTMENT": [
+                    2863
+                ]
+            }
+        ]
+    }
+}

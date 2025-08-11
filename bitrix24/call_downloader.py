@@ -106,7 +106,7 @@ if __name__ == "__main__":
             portal_name="advertpro",
             user_id="9", 
             token="eap2dc10t3z42q27",
-            call_id="493123"
+            call_id="493235"
         )
         print(f"Результат: {result}")
     

@@ -75,7 +75,7 @@ async def upload_file_to_storage_async(file_path: str) -> str:
 if __name__ == "__main__":
     async def test():
         """Тест загрузки одного файла"""
-        file_path = "bitrix24/downloads/advertpro/493027.mp3"
+        file_path = "bitrix24/downloads/advertpro/493459.mp3"
         
         if not os.path.exists(file_path):
             print(f"Файл для тестирования не найден: {file_path}")

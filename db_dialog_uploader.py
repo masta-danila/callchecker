@@ -2,17 +2,17 @@ import psycopg2.extras
 from db_client import get_db_client
 
 
-def upload_recognized_dialogs(dialogues_dict, status):
+def upload_recognized_dialogs(dialogues_dict, default_status=None):
     """
     Обновляет в таблицах только поле 'dialogue' (из входного словаря)
-    и поле 'status', значение которого передаётся в параметре функции,
-    по записям с указанным 'id'.
+    и поле 'status'. Статус берется из каждой записи (если есть поле 'status'),
+    или используется default_status, если задан.
 
     Новый формат входных данных:
     {
         'table_name': {
             'records': [
-                {'id': '...', 'dialogue': '...', 'audio_metadata': {...}},
+                {'id': '...', 'dialogue': '...', 'status': 'empty'/'recognized', 'audio_metadata': {...}},
                 ...
             ]
         },
@@ -31,8 +31,10 @@ def upload_recognized_dialogs(dialogues_dict, status):
                 for rec in records:
                     record_id = rec.get("id")
                     dialogue_text = rec.get("dialogue", "")
-                    if record_id:
-                        data_for_update.append((record_id, dialogue_text, status))
+                    # Берем статус из записи, или используем default_status
+                    record_status = rec.get("status", default_status)
+                    if record_id and record_status:
+                        data_for_update.append((record_id, dialogue_text, record_status))
 
                 if not data_for_update:
                     continue
@@ -119,5 +121,5 @@ if __name__ == "__main__":
         }
     }
 
-    # Пример вызова функции с указанием статуса 'fixed'
-    upload_recognized_dialogs(test_dialogues, 'fixed')
+    # Пример вызова функции с default_status как fallback
+    upload_recognized_dialogs(test_dialogues, default_status='fixed')

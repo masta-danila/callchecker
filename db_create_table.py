@@ -12,7 +12,7 @@ def create_tables(*table_names):
     create_status_enum_query = """
         DO $$ BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status_enum') THEN
-                CREATE TYPE status_enum AS ENUM ('uploaded', 'recognized', 'fixed', 'ready');
+                CREATE TYPE status_enum AS ENUM ('uploaded', 'recognized', 'fixed', 'ready', 'empty');
             END IF;
         END $$;
     """

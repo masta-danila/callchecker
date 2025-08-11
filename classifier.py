@@ -137,6 +137,7 @@ if __name__ == "__main__":
     0: да да да спасибо буду ждать
     1: до свидания
     """
+    text_example = "М: Приложение идите."
 
     categories_example = {
         "categories": [

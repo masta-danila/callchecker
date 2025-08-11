@@ -19,7 +19,7 @@ async def main(delay: int):
         print("Шаг 1: Получаю сырые диалоги из БД")
         records = fetch_data(
             status="recognized",
-            fields=["id", "dialogue"],
+            fields=["id", "dialogue", "status"],
             analytics_mode=False
         )
 
@@ -34,8 +34,11 @@ async def main(delay: int):
             retries=3
         )
 
+        # Сохраняем отладочные данные
+        save_debug_json(processed_records, "processed_records")
+        
         print("Шаг 3: Загружаю обработанные диалоги обратно в БД")
-        upload_recognized_dialogs(processed_records, status='fixed')
+        upload_recognized_dialogs(processed_records, default_status='fixed')
 
         print("Шаг 4: Получаю диалоги для анализа из БД")
         fixed_records = fetch_data(
@@ -55,18 +58,22 @@ async def main(delay: int):
             max_retries=3
         )
 
-        print("Шаг 7: Провожу анализ диалогов согласно критериям")
+        # Сохраняем отладочные данные
+        save_debug_json(classified_records, "classified_records") 
+
+        print("Шаг 6: Провожу анализ диалогов согласно критериям")
         analyzed_records = await analyze_criteria(
             classified_records,
             max_concurrent_requests=500,
             retry_delay=0.1,
             max_retries=3
         )
-        
+
+
         # Сохраняем отладочные данные
         save_debug_json(analyzed_records, "analyzed_records")
         
-        print("Шаг 8: Суммирую данные сущностей")
+        print("Шаг 7: Суммирую данные сущностей")
         final_records = await summarize_entity_descriptions(
             analyzed_records,
             max_text_size=1000,
@@ -78,7 +85,7 @@ async def main(delay: int):
         # Сохраняем отладочные данные
         save_debug_json(final_records, "final_records")
         
-        print("Шаг 9: Загружаю итоговые данные в БД")
+        print("Шаг 8: Загружаю итоговые данные в БД")
         upload_full_data_from_dict(final_records, status='ready')
         
         print("Все шаги успешно выполнены! Ожидаю перед следующим циклом...")

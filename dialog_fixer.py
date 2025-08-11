@@ -195,6 +195,7 @@ if __name__ == "__main__":
 1: все хорошо да договорились
 0: угу да спасибо угу жду тогда спасибо
     """
+    # sample_dialog = ""
 
     result = asyncio.run(fix_dialog(sample_dialog))
     print(result)
