@@ -1,0 +1,42 @@
+{
+    "advertpro": {
+        "records": [
+            {
+                "id": "493123",
+                "date": "2025-08-07T10:00:19+03:00",
+                "user_id": "11009",
+                "phone_number": "+79189616367",
+                "entity_id": "27523",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "493129",
+                "date": "2025-08-07T10:29:33+03:00",
+                "user_id": "11009",
+                "phone_number": "+78612583661",
+                "entity_id": "347831",
+                "call_type": "1",
+                "crm_entity_type": "LEAD"
+            }
+        ],
+        "entities": [
+            {
+                "entity_type_id": 3,
+                "entity_id": 27523,
+                "title": "Тестовый контакт",
+                "name": "Иван",
+                "lastName": "Петров",
+                "id": 77
+            },
+            {
+                "entity_type_id": 1,
+                "entity_id": 347831,
+                "title": "Тестовый лид",
+                "name": "Мария2222",
+                "lastName": "Сидорова",
+                "id": 78
+            }
+        ]
+    }
+}

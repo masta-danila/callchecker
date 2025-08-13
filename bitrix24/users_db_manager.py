@@ -23,74 +23,70 @@ def upsert_users_to_db(portal_name: str, users: list) -> dict:
     
     print(f"Обновляю {len(users)} пользователей в БД для портала {portal_name}")
     
-    conn = get_db_client()
-    cursor = conn.cursor()
-    
     user_id_mapping = {}
     
-    try:
-        for user in users:
-            user_id = user.get('id')
-            name = user.get('NAME')
-            last_name = user.get('LAST_NAME')
-            uf_department = user.get('UF_DEPARTMENT')
-            
-            if not user_id:
-                print(f"Пользователь без ID, пропускаю: {user}")
-                continue
-            
-            # Преобразуем user_id в integer
+    with get_db_client() as conn:
+        with conn.cursor() as cursor:
             try:
-                user_id_int = int(user_id)
-            except (ValueError, TypeError):
-                print(f"Некорректный user_id: {user_id}, пропускаю")
-                continue
-            
-            # UPSERT: INSERT ... ON CONFLICT DO UPDATE
-            upsert_query = f"""
-                INSERT INTO {portal_name}_users (id, name, last_name, uf_department)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (id) 
-                DO UPDATE SET 
-                    name = EXCLUDED.name,
-                    last_name = EXCLUDED.last_name,
-                    uf_department = EXCLUDED.uf_department
-                RETURNING id;
-            """
-            
-            # Преобразуем uf_department в JSON, если это не None
-            uf_department_json = None
-            if uf_department is not None:
-                if isinstance(uf_department, (list, dict)):
-                    import json
-                    uf_department_json = json.dumps(uf_department)
-                else:
-                    uf_department_json = str(uf_department)
-            
-            cursor.execute(upsert_query, (
-                user_id_int,
-                name,
-                last_name,
-                uf_department_json
-            ))
-            
-            # Получаем ID созданной/обновленной записи
-            result = cursor.fetchone()
-            if result:
-                internal_id = result[0]
-                user_id_mapping[user_id] = internal_id
-                print(f"Пользователь {user_id} ({name} {last_name}) обновлен, ID: {internal_id}")
-            
-        conn.commit()
-        print(f"Успешно обновлено {len(user_id_mapping)} пользователей для портала {portal_name}")
-        
-    except Exception as e:
-        print(f"Ошибка при обновлении пользователей для портала {portal_name}: {e}")
-        conn.rollback()
-        return {}
-    finally:
-        cursor.close()
-        conn.close()
+                for user in users:
+                    user_id = user.get('id')
+                    name = user.get('NAME')
+                    last_name = user.get('LAST_NAME')
+                    uf_department = user.get('UF_DEPARTMENT')
+                    
+                    if not user_id:
+                        print(f"Пользователь без ID, пропускаю: {user}")
+                        continue
+                    
+                    # Преобразуем user_id в integer
+                    try:
+                        user_id_int = int(user_id)
+                    except (ValueError, TypeError):
+                        print(f"Некорректный user_id: {user_id}, пропускаю")
+                        continue
+                    
+                    # UPSERT: INSERT ... ON CONFLICT DO UPDATE
+                    upsert_query = f"""
+                        INSERT INTO {portal_name}_users (id, name, last_name, uf_department)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (id) 
+                        DO UPDATE SET 
+                            name = EXCLUDED.name,
+                            last_name = EXCLUDED.last_name,
+                            uf_department = EXCLUDED.uf_department
+                        RETURNING id;
+                    """
+                    
+                    # Преобразуем uf_department в JSON, если это не None
+                    uf_department_json = None
+                    if uf_department is not None:
+                        if isinstance(uf_department, (list, dict)):
+                            import json
+                            uf_department_json = json.dumps(uf_department)
+                        else:
+                            uf_department_json = str(uf_department)
+                    
+                    cursor.execute(upsert_query, (
+                        user_id_int,
+                        name,
+                        last_name,
+                        uf_department_json
+                    ))
+                    
+                    # Получаем ID созданной/обновленной записи
+                    result = cursor.fetchone()
+                    if result:
+                        internal_id = result[0]
+                        user_id_mapping[user_id] = internal_id
+                        print(f"Пользователь {user_id} ({name} {last_name}) обновлен, ID: {internal_id}")
+                
+                conn.commit()
+                print(f"Успешно обновлено {len(user_id_mapping)} пользователей для портала {portal_name}")
+                
+            except Exception as e:
+                print(f"Ошибка при обновлении пользователей для портала {portal_name}: {e}")
+                conn.rollback()
+                return {}
     
     return user_id_mapping
 

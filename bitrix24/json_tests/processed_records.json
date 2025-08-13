@@ -8,7 +8,14 @@
                 "phone_number": "88612994057",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 3.24,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493617.mp3"
+                }
             },
             {
                 "id": "493619",
@@ -17,7 +24,14 @@
                 "phone_number": "+79255060751",
                 "entity_id": "3191",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.95,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493619.mp3"
+                }
             },
             {
                 "id": "493621",
@@ -26,7 +40,14 @@
                 "phone_number": "79251955584",
                 "entity_id": "27589",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 4.97,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493621.mp3"
+                }
             },
             {
                 "id": "493623",
@@ -35,7 +56,14 @@
                 "phone_number": "79251955584",
                 "entity_id": "27589",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 5.9,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493623.mp3"
+                }
             },
             {
                 "id": "493625",
@@ -44,7 +72,14 @@
                 "phone_number": "79251955584",
                 "entity_id": "27589",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.52,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493625.mp3"
+                }
             },
             {
                 "id": "493627",
@@ -53,7 +88,14 @@
                 "phone_number": "79251955584",
                 "entity_id": "27589",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 5.83,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493627.mp3"
+                }
             },
             {
                 "id": "493629",
@@ -62,7 +104,14 @@
                 "phone_number": "+79067780220",
                 "entity_id": "25491",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 1.15,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493629.mp3"
+                }
             },
             {
                 "id": "493631",
@@ -71,7 +120,14 @@
                 "phone_number": "79670378511",
                 "entity_id": "27593",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 0.22,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493631.mp3"
+                }
             },
             {
                 "id": "493633",
@@ -80,7 +136,14 @@
                 "phone_number": "79670378549",
                 "entity_id": "27587",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 0.22,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493633.mp3"
+                }
             },
             {
                 "id": "493635",
@@ -89,7 +152,14 @@
                 "phone_number": "79670377820",
                 "entity_id": "27591",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 0.22,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493635.mp3"
+                }
             },
             {
                 "id": "493637",
@@ -98,7 +168,14 @@
                 "phone_number": "79670378549",
                 "entity_id": "27587",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 0.22,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493637.mp3"
+                }
             },
             {
                 "id": "493639",
@@ -107,7 +184,14 @@
                 "phone_number": "79267560347",
                 "entity_id": "27579",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 6.7,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493639.mp3"
+                }
             },
             {
                 "id": "493641",
@@ -116,7 +200,14 @@
                 "phone_number": "+79037957780",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 388.3,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493641.mp3"
+                }
             },
             {
                 "id": "493645",
@@ -125,7 +216,14 @@
                 "phone_number": "+79851850034",
                 "entity_id": "24049",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 121.18,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493645.mp3"
+                }
             },
             {
                 "id": "493647",
@@ -134,7 +232,14 @@
                 "phone_number": "+79772716777",
                 "entity_id": "21623",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 193.39,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493647.mp3"
+                }
             },
             {
                 "id": "493649",
@@ -143,7 +248,14 @@
                 "phone_number": "+74997030217",
                 "entity_id": "101889",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 12.38,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493649.mp3"
+                }
             },
             {
                 "id": "493651",
@@ -152,7 +264,14 @@
                 "phone_number": "+79165495080",
                 "entity_id": "27235",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 355.68,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493651.mp3"
+                }
             },
             {
                 "id": "493653",
@@ -161,7 +280,14 @@
                 "phone_number": "+79118457250",
                 "entity_id": "26173",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 9.22,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493653.mp3"
+                }
             },
             {
                 "id": "493657",
@@ -170,7 +296,14 @@
                 "phone_number": "+79163221797",
                 "entity_id": "347909",
                 "call_type": "2",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 133.99,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493657.mp3"
+                }
             },
             {
                 "id": "493659",
@@ -179,7 +312,14 @@
                 "phone_number": "+73852756967",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 22.1,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493659.mp3"
+                }
             },
             {
                 "id": "493663",
@@ -188,7 +328,14 @@
                 "phone_number": "+79163221797",
                 "entity_id": "347909",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.38,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493663.mp3"
+                }
             },
             {
                 "id": "493669",
@@ -197,7 +344,14 @@
                 "phone_number": "+79163221797",
                 "entity_id": "347909",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 1691.86,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493669.mp3"
+                }
             },
             {
                 "id": "493679",
@@ -206,7 +360,14 @@
                 "phone_number": "+79067780220",
                 "entity_id": "25491",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2685.82,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493679.mp3"
+                }
             },
             {
                 "id": "493675",
@@ -215,7 +376,14 @@
                 "phone_number": "79251955584",
                 "entity_id": "27589",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 276.77,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493675.mp3"
+                }
             },
             {
                 "id": "493677",
@@ -224,7 +392,14 @@
                 "phone_number": "+79993475916",
                 "entity_id": "17635",
                 "call_type": "2",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 606.6,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493677.mp3"
+                }
             },
             {
                 "id": "493681",
@@ -233,7 +408,14 @@
                 "phone_number": "89267121908",
                 "entity_id": "7853",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 4.25,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493681.mp3"
+                }
             },
             {
                 "id": "493685",
@@ -242,7 +424,14 @@
                 "phone_number": "+79182284442",
                 "entity_id": "21393",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 1.3,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493685.mp3"
+                }
             },
             {
                 "id": "493687",
@@ -251,7 +440,14 @@
                 "phone_number": "+79221441142",
                 "entity_id": "23939",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 50.11,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493687.mp3"
+                }
             },
             {
                 "id": "493689",
@@ -260,7 +456,14 @@
                 "phone_number": "+79629713842",
                 "entity_id": "25835",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 13.54,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493689.mp3"
+                }
             },
             {
                 "id": "493697",
@@ -269,7 +472,14 @@
                 "phone_number": "+79090152514",
                 "entity_id": "26559",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 147.6,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493697.mp3"
+                }
             },
             {
                 "id": "493691",
@@ -278,7 +488,14 @@
                 "phone_number": "74732045406",
                 "entity_id": "329879",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 12.17,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493691.mp3"
+                }
             },
             {
                 "id": "493695",
@@ -287,7 +504,14 @@
                 "phone_number": "+79990040159",
                 "entity_id": "25635",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 7.49,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493695.mp3"
+                }
             },
             {
                 "id": "493693",
@@ -296,7 +520,14 @@
                 "phone_number": "74732045406",
                 "entity_id": "329879",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 9.58,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493693.mp3"
+                }
             },
             {
                 "id": "493701",
@@ -305,7 +536,14 @@
                 "phone_number": "+79031361868",
                 "entity_id": "24715",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 583.92,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493701.mp3"
+                }
             },
             {
                 "id": "493699",
@@ -314,7 +552,14 @@
                 "phone_number": "89105529800",
                 "entity_id": "430",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 87.7,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493699.mp3"
+                }
             },
             {
                 "id": "493709",
@@ -323,7 +568,14 @@
                 "phone_number": "+79267121908",
                 "entity_id": "7853",
                 "call_type": "2",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 15.26,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493709.mp3"
+                }
             },
             {
                 "id": "493707",
@@ -332,7 +584,14 @@
                 "phone_number": "+79001585382",
                 "entity_id": "347919",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.38,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493707.mp3"
+                }
             },
             {
                 "id": "493713",
@@ -341,7 +600,14 @@
                 "phone_number": "+79629459988",
                 "entity_id": "27175",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 87.19,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493713.mp3"
+                }
             },
             {
                 "id": "493711",
@@ -350,7 +616,14 @@
                 "phone_number": "89950393636",
                 "entity_id": "14895",
                 "call_type": "1",
-                "crm_entity_type": "COMPANY"
+                "crm_entity_type": "COMPANY",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 19.37,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493711.mp3"
+                }
             },
             {
                 "id": "493715",
@@ -359,7 +632,14 @@
                 "phone_number": "89267121908",
                 "entity_id": "7853",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 212.26,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493715.mp3"
+                }
             },
             {
                 "id": "493717",
@@ -368,7 +648,14 @@
                 "phone_number": "79193058660",
                 "entity_id": "27599",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 151.27,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493717.mp3"
+                }
             },
             {
                 "id": "493721",
@@ -377,7 +664,14 @@
                 "phone_number": "+79166067798",
                 "entity_id": "11727",
                 "call_type": "1",
-                "crm_entity_type": "COMPANY"
+                "crm_entity_type": "COMPANY",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 265.75,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493721.mp3"
+                }
             },
             {
                 "id": "493723",
@@ -386,7 +680,14 @@
                 "phone_number": "+79261391655",
                 "entity_id": "1886",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 250.42,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493723.mp3"
+                }
             },
             {
                 "id": "493725",
@@ -395,7 +696,14 @@
                 "phone_number": "+79991944484",
                 "entity_id": "19625",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 5.54,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493725.mp3"
+                }
             },
             {
                 "id": "493727",
@@ -404,7 +712,14 @@
                 "phone_number": "+79257962525",
                 "entity_id": "25079",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 4.75,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493727.mp3"
+                }
             },
             {
                 "id": "493731",
@@ -413,7 +728,14 @@
                 "phone_number": "+74872600553",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 5.33,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493731.mp3"
+                }
             },
             {
                 "id": "493733",
@@ -422,7 +744,14 @@
                 "phone_number": "+79067738736",
                 "entity_id": "19887",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 171.58,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493733.mp3"
+                }
             },
             {
                 "id": "493735",
@@ -431,7 +760,14 @@
                 "phone_number": "89267121908",
                 "entity_id": "7853",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 82.08,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493735.mp3"
+                }
             },
             {
                 "id": "493737",
@@ -440,7 +776,14 @@
                 "phone_number": "+74732045406",
                 "entity_id": "329879",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 14.83,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493737.mp3"
+                }
             },
             {
                 "id": "493741",
@@ -449,7 +792,14 @@
                 "phone_number": "+79658064757",
                 "entity_id": "15351",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 621.14,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493741.mp3"
+                }
             },
             {
                 "id": "493743",
@@ -458,7 +808,14 @@
                 "phone_number": "+79990040159",
                 "entity_id": "25635",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 1035.58,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493743.mp3"
+                }
             },
             {
                 "id": "493739",
@@ -467,7 +824,14 @@
                 "phone_number": "+79629459988",
                 "entity_id": "27175",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 144.72,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493739.mp3"
+                }
             },
             {
                 "id": "493747",
@@ -476,7 +840,14 @@
                 "phone_number": "+78452222888",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 73.87,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493747.mp3"
+                }
             },
             {
                 "id": "493749",
@@ -485,7 +856,14 @@
                 "phone_number": "+79671669977",
                 "entity_id": "12973",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 91.73,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493749.mp3"
+                }
             },
             {
                 "id": "493759",
@@ -494,7 +872,14 @@
                 "phone_number": "89031651374",
                 "entity_id": "1808",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 285.19,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493759.mp3"
+                }
             },
             {
                 "id": "493751",
@@ -503,7 +888,14 @@
                 "phone_number": "+79118457250",
                 "entity_id": "26173",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 8.21,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493751.mp3"
+                }
             },
             {
                 "id": "493755",
@@ -512,7 +904,14 @@
                 "phone_number": "+79671669977",
                 "entity_id": "12973",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 3.38,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493755.mp3"
+                }
             },
             {
                 "id": "493757",
@@ -521,7 +920,14 @@
                 "phone_number": "+79671669977",
                 "entity_id": "12973",
                 "call_type": "2",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 31.46,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493757.mp3"
+                }
             },
             {
                 "id": "493761",
@@ -530,7 +936,14 @@
                 "phone_number": "+79671669977",
                 "entity_id": "12973",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 93.1,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493761.mp3"
+                }
             },
             {
                 "id": "493763",
@@ -539,7 +952,14 @@
                 "phone_number": "+74951984350",
                 "entity_id": "347929",
                 "call_type": "2",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 119.66,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493763.mp3"
+                }
             },
             {
                 "id": "493767",
@@ -548,7 +968,14 @@
                 "phone_number": "84872580581",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 29.66,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493767.mp3"
+                }
             },
             {
                 "id": "493771",
@@ -557,7 +984,14 @@
                 "phone_number": "+79017900549",
                 "entity_id": "347927",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.16,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493771.mp3"
+                }
             },
             {
                 "id": "493775",
@@ -566,7 +1000,14 @@
                 "phone_number": "+79680797016",
                 "entity_id": "347931",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 6.77,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493775.mp3"
+                }
             },
             {
                 "id": "493777",
@@ -575,7 +1016,14 @@
                 "phone_number": "+74952807051",
                 "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": null
+                "crm_entity_type": null,
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 61.27,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493777.mp3"
+                }
             },
             {
                 "id": "493783",
@@ -584,7 +1032,14 @@
                 "phone_number": "+79214204015",
                 "entity_id": "27513",
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": "CONTACT",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 10.01,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493783.mp3"
+                }
             },
             {
                 "id": "493785",
@@ -593,7 +1048,14 @@
                 "phone_number": "+79620700626",
                 "entity_id": "347933",
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
+                "crm_entity_type": "LEAD",
+                "audio_metadata": {
+                    "encoding": "MPEG_AUDIO",
+                    "num_channels": 2,
+                    "sample_rate_hertz": 8000,
+                    "duration": 2.81,
+                    "uri": "storage://s3.api.tinkoff.ai/inbound/493785.mp3"
+                }
             }
         ],
         "entities": [

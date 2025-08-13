@@ -116,8 +116,18 @@ def cleanup_unused_portals(config_portals):
     Удаляет таблицы порталов, которых нет в конфиге
     """
     existing_tables = get_existing_portal_tables()
-    config_portal_names = [extract_portal_name(url) for url in config_portals]
-    config_portal_names = [name for name in config_portal_names if name]
+    
+    # Извлекаем имена порталов из конфигурации, поддерживая новый формат
+    config_portal_names = []
+    for portal in config_portals:
+        if isinstance(portal, dict):
+            portal_url = portal.get('url', '')
+        else:
+            portal_url = portal
+        
+        portal_name = extract_portal_name(portal_url)
+        if portal_name:
+            config_portal_names.append(portal_name)
     
     unused_portals = [table for table in existing_tables if table not in config_portal_names]
     
@@ -152,11 +162,17 @@ def portal_tables_exist(portal_name):
         return False
 
 
-def setup_portal_tables(portal_url):
+def setup_portal_tables(portal_config):
     """
     Создает таблицы для одного портала
     """
-    print(f"Обрабатываю URL: {portal_url}")
+    print(f"Обрабатываю URL: {portal_config}")
+    
+    # Извлекаем URL из конфигурации портала
+    if isinstance(portal_config, dict):
+        portal_url = portal_config.get('url', '')
+    else:
+        portal_url = portal_config
     
     if not validate_portal_url(portal_url):
         print(f"Некорректный URL: {portal_url}")
@@ -205,10 +221,10 @@ def main():
     success_count = 0
     error_count = 0
     
-    for i, portal_url in enumerate(portals, 1):
+    for i, portal_config in enumerate(portals, 1):
         print(f"\n--- Портал {i}/{len(portals)} ---")
         
-        if setup_portal_tables(portal_url):
+        if setup_portal_tables(portal_config):
             success_count += 1
         else:
             error_count += 1

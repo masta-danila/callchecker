@@ -23,65 +23,61 @@ def upsert_entities_to_db(portal_name: str, entities: list) -> dict:
     
     print(f"Обновляю {len(entities)} сущностей в БД для портала {portal_name}")
     
-    conn = get_db_client()
-    cursor = conn.cursor()
-    
     entity_id_mapping = {}
     
-    try:
-        for entity in entities:
-            entity_type_id = entity.get('entity_type_id')
-            entity_id_bitrix = entity.get('entity_id')
-            title = entity.get('title')
-            name = entity.get('name')
-            last_name = entity.get('lastName')
-            
-            # Преобразуем entity_type_id в enum значение
-            entity_type_enum = get_entity_type_enum(entity_type_id)
-            if not entity_type_enum:
-                print(f"Неизвестный тип сущности: {entity_type_id}, пропускаю")
-                continue
-            
-            # UPSERT: INSERT ... ON CONFLICT DO UPDATE
-            upsert_query = f"""
-                INSERT INTO {portal_name}_entities (crm_entity_type, entity_id, title, name, lastName)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (crm_entity_type, entity_id) 
-                DO UPDATE SET 
-                    title = EXCLUDED.title,
-                    name = EXCLUDED.name,
-                    lastName = EXCLUDED.lastName
-                RETURNING id;
-            """
-            
-            cursor.execute(upsert_query, (
-                entity_type_enum,
-                entity_id_bitrix,
-                title,
-                name,
-                last_name
-            ))
-            
-            # Получаем внутренний ID
-            internal_id = cursor.fetchone()[0]
-            
-            # Сохраняем маппинг
-            entity_key = (entity_type_id, entity_id_bitrix)
-            entity_id_mapping[entity_key] = internal_id
-            
-            print(f"Сущность {entity_type_enum}:{entity_id_bitrix} → внутренний ID: {internal_id}")
-        
-        # Коммитим все изменения
-        conn.commit()
-        print(f"Успешно обновлено {len(entity_id_mapping)} сущностей в БД")
-        
-    except Exception as e:
-        print(f"Ошибка при обновлении сущностей: {e}")
-        conn.rollback()
-        
-    finally:
-        cursor.close()
-        conn.close()
+    with get_db_client() as conn:
+        with conn.cursor() as cursor:
+            try:
+                for entity in entities:
+                    entity_type_id = entity.get('entity_type_id')
+                    entity_id_bitrix = entity.get('entity_id')
+                    title = entity.get('title')
+                    name = entity.get('name')
+                    last_name = entity.get('lastName')
+                    
+                    # Преобразуем entity_type_id в enum значение
+                    entity_type_enum = get_entity_type_enum(entity_type_id)
+                    if not entity_type_enum:
+                        print(f"Неизвестный тип сущности: {entity_type_id}, пропускаю")
+                        continue
+                    
+                    # UPSERT: INSERT ... ON CONFLICT DO UPDATE
+                    upsert_query = f"""
+                        INSERT INTO {portal_name}_entities (crm_entity_type, entity_id, title, name, lastName)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (crm_entity_type, entity_id) 
+                        DO UPDATE SET 
+                            title = EXCLUDED.title,
+                            name = EXCLUDED.name,
+                            lastName = EXCLUDED.lastName
+                        RETURNING id;
+                    """
+                    
+                    cursor.execute(upsert_query, (
+                        entity_type_enum,
+                        entity_id_bitrix,
+                        title,
+                        name,
+                        last_name
+                    ))
+                    
+                    # Получаем внутренний ID
+                    internal_id = cursor.fetchone()[0]
+                    
+                    # Сохраняем маппинг
+                    entity_key = (entity_type_id, entity_id_bitrix)
+                    entity_id_mapping[entity_key] = internal_id
+                    
+                    print(f"Сущность {entity_type_enum}:{entity_id_bitrix} → внутренний ID: {internal_id}")
+                
+                # Коммитим все изменения
+                conn.commit()
+                print(f"Успешно обновлено {len(entity_id_mapping)} сущностей в БД")
+                
+            except Exception as e:
+                print(f"Ошибка при обновлении сущностей: {e}")
+                conn.rollback()
+                return {}
     
     return entity_id_mapping
 

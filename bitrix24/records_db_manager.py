@@ -21,90 +21,85 @@ def upsert_records_to_db(portal_name: str, records: list) -> list:
         print(f"Нет записей для обновления в портале {portal_name}")
         return []
     
-    conn = get_db_client()
-    cursor = conn.cursor()
-    
     table_name = f"{portal_name}"
     
-    try:
-        updated_records = []
-        
-        for record in records:
-            # Извлекаем аудио метаданные
-            audio_metadata = record.get('audio_metadata', {})
-            
-            # Подготавливаем данные для вставки
-            call_id = record.get('id')
-            call_date = record.get('date')
-            user_id = record.get('user_id')
-            phone_number = record.get('phone_number')
-            call_type = record.get('call_type')
-            
-            # Ищем внутренний ID сущности по паре (entity_id, crm_entity_type)
-            internal_entity_id = None
-            bitrix_entity_id = record.get('entity_id')
-            crm_entity_type = record.get('crm_entity_type')
-            
-            if bitrix_entity_id and crm_entity_type:
-                # Ищем запись в таблице entities
-                entity_query = f"""
-                    SELECT id FROM {table_name}_entities 
-                    WHERE entity_id = %s AND crm_entity_type = %s
-                """
-                cursor.execute(entity_query, (bitrix_entity_id, crm_entity_type))
-                entity_result = cursor.fetchone()
-                if entity_result:
-                    internal_entity_id = entity_result[0]
-                    print(f"Найдена сущность: {crm_entity_type} {bitrix_entity_id} -> внутренний ID {internal_entity_id}")
-                else:
-                    print(f"Сущность не найдена: {crm_entity_type} {bitrix_entity_id}")
-            
-            # Преобразуем audio_metadata в JSON строку
-            audio_metadata_json = json.dumps(audio_metadata) if audio_metadata else None
-            
-            print(f"Обновляю запись {call_id} в таблице {table_name}")
-            
-            # UPSERT запрос - устанавливаем статус 'uploaded'
-            query = f"""
-                INSERT INTO {table_name} (
-                    id, date, user_id, phone_number, entity_id, call_type, audio_metadata, status
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, 'uploaded'
-                )
-                ON CONFLICT (id) DO UPDATE SET
-                    date = EXCLUDED.date,
-                    user_id = EXCLUDED.user_id,
-                    phone_number = EXCLUDED.phone_number,
-                    entity_id = EXCLUDED.entity_id,
-                    call_type = EXCLUDED.call_type,
-                    audio_metadata = EXCLUDED.audio_metadata,
-                    status = 'uploaded'
-                RETURNING id;
-            """
-            
-            cursor.execute(query, (
-                call_id, call_date, user_id, phone_number, internal_entity_id, call_type, audio_metadata_json
-            ))
-            
-            result = cursor.fetchone()
-            if result:
-                print(f"Запись {call_id} успешно обновлена в БД")
-                updated_records.append(record)
-            else:
-                print(f"Ошибка при обновлении записи {call_id}")
-        
-        conn.commit()
-        print(f"Портал {portal_name}: {len(updated_records)}/{len(records)} записей успешно обновлено")
-        return updated_records
-        
-    except Exception as e:
-        print(f"Ошибка при обновлении записей портала {portal_name}: {e}")
-        conn.rollback()
-        return []
-        
-    finally:
-        cursor.close()
-        conn.close()
+    with get_db_client() as conn:
+        with conn.cursor() as cursor:
+            try:
+                updated_records = []
+                
+                for record in records:
+                    # Извлекаем аудио метаданные
+                    audio_metadata = record.get('audio_metadata', {})
+                    
+                    # Подготавливаем данные для вставки
+                    call_id = record.get('id')
+                    call_date = record.get('date')
+                    user_id = record.get('user_id')
+                    phone_number = record.get('phone_number')
+                    call_type = record.get('call_type')
+                    
+                    # Ищем внутренний ID сущности по паре (entity_id, crm_entity_type)
+                    internal_entity_id = None
+                    bitrix_entity_id = record.get('entity_id')
+                    crm_entity_type = record.get('crm_entity_type')
+                    
+                    if bitrix_entity_id and crm_entity_type:
+                        # Ищем запись в таблице entities
+                        entity_query = f"""
+                            SELECT id FROM {table_name}_entities 
+                            WHERE entity_id = %s AND crm_entity_type = %s
+                        """
+                        cursor.execute(entity_query, (bitrix_entity_id, crm_entity_type))
+                        entity_result = cursor.fetchone()
+                        if entity_result:
+                            internal_entity_id = entity_result[0]
+                            print(f"Найдена сущность: {crm_entity_type} {bitrix_entity_id} -> внутренний ID {internal_entity_id}")
+                        else:
+                            print(f"Сущность не найдена: {crm_entity_type} {bitrix_entity_id}")
+                    
+                    # Преобразуем audio_metadata в JSON строку
+                    audio_metadata_json = json.dumps(audio_metadata) if audio_metadata else None
+                    
+                    print(f"Обновляю запись {call_id} в таблице {table_name}")
+                    
+                    # UPSERT запрос - устанавливаем статус 'uploaded'
+                    query = f"""
+                        INSERT INTO {table_name} (
+                            id, date, user_id, phone_number, entity_id, call_type, audio_metadata, status
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, 'uploaded'
+                        )
+                        ON CONFLICT (id) DO UPDATE SET
+                            date = EXCLUDED.date,
+                            user_id = EXCLUDED.user_id,
+                            phone_number = EXCLUDED.phone_number,
+                            entity_id = EXCLUDED.entity_id,
+                            call_type = EXCLUDED.call_type,
+                            audio_metadata = EXCLUDED.audio_metadata,
+                            status = 'uploaded'
+                        RETURNING id;
+                    """
+                    
+                    cursor.execute(query, (
+                        call_id, call_date, user_id, phone_number, internal_entity_id, call_type, audio_metadata_json
+                    ))
+                    
+                    result = cursor.fetchone()
+                    if result:
+                        print(f"Запись {call_id} успешно обновлена в БД")
+                        updated_records.append(record)
+                    else:
+                        print(f"Ошибка при обновлении записи {call_id}")
+                
+                conn.commit()
+                print(f"Портал {portal_name}: {len(updated_records)}/{len(records)} записей успешно обновлено")
+                return updated_records
+                
+            except Exception as e:
+                print(f"Ошибка при обновлении записей портала {portal_name}: {e}")
+                conn.rollback()
+                return []
 
 
 async def update_records_in_database(data_dict: dict) -> dict:
