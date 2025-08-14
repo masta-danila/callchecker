@@ -105,7 +105,7 @@ def create_tables(*table_names):
                     # -------------------------------------------
                     create_main_table_query = f"""
                         CREATE TABLE {table_name} (
-                            id TEXT PRIMARY KEY NOT NULL,       -- Обязательное поле (ID звонка)
+                            id TEXT PRIMARY KEY NOT NULL,       -- Обязательное поле (ID записи с префиксом call_)
                             date TIMESTAMP NOT NULL,            -- Обязательное поле (Дата звонка)
                             dialogue TEXT,                      -- Необязательное поле (Текст диалога)
                             data JSONB,                         -- Необязательное поле (Дополнительные данные)
@@ -115,6 +115,7 @@ def create_tables(*table_names):
                             phone_number VARCHAR(50),           -- Необязательное поле (Номер телефона)
                             entity_id INTEGER,                  -- Необязательное поле (ID сущности, может быть NULL)
                             call_type call_type_enum,           -- Тип звонка (1, 2, 3, 4)
+
                             FOREIGN KEY (entity_id)
                                 REFERENCES {table_name}_entities(id)
                                 ON DELETE SET NULL,
@@ -223,6 +224,7 @@ def create_tables(*table_names):
                             ON {table_name}(entity_id);
                         CREATE INDEX IF NOT EXISTS idx_{table_name}_status_date 
                             ON {table_name}(status, date);
+
                     """
                     cur.execute(create_indexes_query)
                     print(f"Индексы для {table_name} успешно созданы.")

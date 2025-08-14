@@ -11,6 +11,19 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from call_downloader import download_call_by_id
 
+# Утилиты для работы с префиксами
+def add_call_prefix(call_id):
+    """Добавляет префикс call_ к ID если его нет"""
+    if isinstance(call_id, str) and call_id.startswith('call_'):
+        return call_id
+    return f'call_{call_id}'
+
+def remove_call_prefix(call_id):
+    """Убирает префикс call_ из ID"""
+    if isinstance(call_id, str) and call_id.startswith('call_'):
+        return call_id.replace('call_', '')
+    return call_id
+
 
 def load_portals_config(config_file='bitrix_portals.json'):
     """
@@ -158,7 +171,17 @@ async def download_missing_calls_from_records(
         
         # Получаем данные портала из records (если есть)
         portal_data = records.get(portal_name, {"records": []})
-        call_ids = [record["id"] for record in portal_data.get("records", [])]
+        
+        # Обрабатываем ID из БД - они могут быть с префиксами (call_493125) или без (493125)
+        # Для сравнения с Bitrix24 API нужны оригинальные ID без префиксов
+        call_ids = []
+        prefixed_ids = []
+        for record in portal_data.get("records", []):
+            record_id = record["id"]
+            prefixed_ids.append(add_call_prefix(record_id))  # Сохраняем с префиксом для внутренней работы
+            call_ids.append(remove_call_prefix(record_id))   # Без префикса для сравнения с API
+        
+        print(f"Обрабатываю портал {portal_name}: {len(prefixed_ids)} записей в БД, {len(call_ids)} ID для сравнения с API")
         
         if not call_ids:
             print(f"В БД нет записей для портала {portal_name}, ищу все звонки за период")
@@ -174,8 +197,15 @@ async def download_missing_calls_from_records(
         
         # Формируем результат с полной информацией о звонках
         if successful_downloads:
+            # Добавляем префиксы к ID перед сохранением в результат
+            records_with_prefixes = []
+            for record in successful_downloads:
+                record_copy = record.copy()
+                record_copy['id'] = add_call_prefix(record['id'])
+                records_with_prefixes.append(record_copy)
+            
             downloaded_records[portal_name] = {
-                "records": successful_downloads
+                "records": records_with_prefixes
             }
     
     return downloaded_records
@@ -264,9 +294,13 @@ async def download_calls_for_portal(portal_name, user_id, token, existing_call_i
     if os.path.exists(downloads_dir):
         for filename in os.listdir(downloads_dir):
             if filename.endswith('.mp3'):
-                # Извлекаем ID из имени файла (например, 493123.mp3 -> 493123)
+                # Извлекаем ID из имени файла
+                # Поддерживаем как старые (493123.mp3) так и новые (call_493123.mp3) форматы
                 call_id = filename.replace('.mp3', '')
-                downloaded_files.add(call_id)
+                
+                # Приводим к формату без префикса для сравнения с API
+                original_id = remove_call_prefix(call_id)
+                downloaded_files.add(original_id)
     
     # Исключаем те, что уже скачаны в папке (только для скачивания)
     final_calls = [call for call in new_calls if call['id'] not in downloaded_files]
@@ -312,30 +346,30 @@ async def download_calls_for_portal(portal_name, user_id, token, existing_call_i
 
 if __name__ == "__main__":
     from debug_utils import save_debug_json
-    # Тестовые данные - первые 20 записей из bitrix24/downloads/advertpro
+    # Тестовые данные - записи с префиксами call_
     test_records = {
         "advertpro": {
             "records": [
-                {"id": "493213"},
-                {"id": "493217"}, 
-                {"id": "493155"},
-                {"id": "493227"},
-                {"id": "493205"},
-                {"id": "493199"},
-                {"id": "493209"},
-                {"id": "493143"},
-                {"id": "493215"},
-                {"id": "493201"},
-                {"id": "493211"},
-                {"id": "493195"},
-                {"id": "493197"},
-                {"id": "493183"},
-                {"id": "493193"},
-                {"id": "493177"},
-                {"id": "493191"},
-                {"id": "493189"},
-                {"id": "493185"},
-                {"id": "493175"}
+                {"id": "call_493213"},
+                {"id": "call_493217"}, 
+                {"id": "call_493155"},
+                {"id": "call_493227"},
+                {"id": "call_493205"},
+                {"id": "call_493199"},
+                {"id": "call_493209"},
+                {"id": "call_493143"},
+                {"id": "call_493215"},
+                {"id": "call_493201"},
+                {"id": "call_493211"},
+                {"id": "call_493195"},
+                {"id": "call_493197"},
+                {"id": "call_493183"},
+                {"id": "call_493193"},
+                {"id": "call_493177"},
+                {"id": "call_493191"},
+                {"id": "call_493189"},
+                {"id": "call_493185"},
+                {"id": "call_493175"}
             ]
         }
     }

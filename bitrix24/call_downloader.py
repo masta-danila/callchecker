@@ -27,8 +27,9 @@ async def download_call_by_id(portal_name, user_id, token, call_id):
     download_dir = os.path.join(current_dir, "downloads", portal_name)
     os.makedirs(download_dir, exist_ok=True)
     
-    # Формируем путь для сохранения
-    file_path = os.path.join(download_dir, f"{call_id}.mp3")
+    # Формируем путь для сохранения С ПРЕФИКСОМ call_
+    prefixed_call_id = f"call_{call_id}" if not str(call_id).startswith('call_') else call_id
+    file_path = os.path.join(download_dir, f"{prefixed_call_id}.mp3")
     
     # Скачиваем файл
     if await download_audio_file(record_url, file_path):

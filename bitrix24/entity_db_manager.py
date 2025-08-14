@@ -171,7 +171,7 @@ if __name__ == "__main__":
         "advertpro": {
             "records": [
                 {
-                    "id": "493123",
+                    "id": "call_493123",
                     "date": "2025-08-07T10:00:19+03:00",
                     "user_id": "11009",
                     "phone_number": "+79189616367",
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                     "crm_entity_type": "CONTACT"
                 },
                 {
-                    "id": "493129",
+                    "id": "call_493129",
                     "date": "2025-08-07T10:29:33+03:00",
                     "user_id": "11009",
                     "phone_number": "+78612583661",
