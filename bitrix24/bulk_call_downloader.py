@@ -216,7 +216,9 @@ async def get_portal_calls(portal_name, user_id, token, days_back=7):
     Получает все звонки с записями из Bitrix24 за указанный период.
     Возвращает полную информацию о звонках.
     """
-    start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+    # Исправленная логика: days_back=1 означает сегодня, days_back=2 означает сегодня+вчера
+    days_to_subtract = days_back - 1
+    start_date = (datetime.now() - timedelta(days=days_to_subtract)).strftime('%Y-%m-%d')
     url = f"https://{portal_name}.bitrix24.ru/rest/{user_id}/{token}/voximplant.statistic.get.json"
     
     all_calls = []

@@ -82,7 +82,9 @@ def fetch_data_with_portal_settings(status: str = None, fields: list[str] = None
                     params.append(status)
                 
                 # Добавляем фильтр по дате с индивидуальным days_back
-                where_conditions.append(f"date >= CURRENT_DATE - INTERVAL '{portal_days_back} days'")
+                # Логика: 1 день = сегодня, 2 дня = сегодня + вчера, и т.д.
+                days_to_subtract = portal_days_back - 1
+                where_conditions.append(f"date >= CURRENT_DATE - INTERVAL '{days_to_subtract} days'")
                 
                 where_clause = "WHERE " + " AND ".join(where_conditions)
                 query = f"SELECT {columns_sql} FROM {table} {where_clause};"
@@ -290,7 +292,7 @@ def fetch_data(status: str = None, fields: list[str] = None, analytics_mode: boo
 
 if __name__ == "__main__":
     records = fetch_data(
-        status="uploaded",
+        status="ready",
         fields=["id", "dialogue", "entity_id", "data"],
         analytics_mode=True)
     print(json.dumps(records, indent=4, ensure_ascii=False))
