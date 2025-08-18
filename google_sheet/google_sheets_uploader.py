@@ -177,38 +177,136 @@ def analyze_existing_worksheet(worksheet) -> Dict:
     }
 
 
-def add_missing_columns(worksheet, existing_headers: List[str], new_headers: List[str]):
+def normalize_headers_for_comparison(headers: List[str], criteria: List[Dict]) -> List[str]:
+    """
+    Нормализует заголовки для корректного сравнения.
+    Преобразует _text/_eval колонки объединенных критериев в единые имена.
+    
+    :param headers: Исходные заголовки
+    :param criteria: Список критериев для анализа
+    :return: Нормализованные заголовки
+    """
+    normalized = []
+    base_headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue']
+    
+    # Создаем карту объединенных критериев
+    merged_criteria = {}
+    for criterion in criteria:
+        show_text = criterion.get('show_text_description', False)
+        show_evaluation = criterion.get('evaluate_criterion', False)
+        if show_text and show_evaluation:
+            criterion_name = criterion['name']
+            merged_criteria[f"{criterion_name}_text"] = criterion_name
+            merged_criteria[f"{criterion_name}_eval"] = criterion_name
+    
+    i = 0
+    while i < len(headers):
+        header = headers[i].strip()
+        
+        if header in base_headers:
+            # Базовый заголовок - добавляем как есть
+            normalized.append(header)
+            i += 1
+        elif header in merged_criteria:
+            # Это _text или _eval от объединенного критерия
+            criterion_name = merged_criteria[header]
+            
+            # Проверяем, есть ли парная колонка
+            text_header = f"{criterion_name}_text"
+            eval_header = f"{criterion_name}_eval"
+            
+            if (i + 1 < len(headers) and 
+                headers[i + 1].strip() in merged_criteria and 
+                merged_criteria[headers[i + 1].strip()] == criterion_name):
+                # Есть парная колонка - объединяем в одно название
+                if header not in normalized:  # Избегаем дубликатов
+                    normalized.append(criterion_name)
+                i += 2  # Пропускаем обе колонки
+            else:
+                # Нет парной колонки - добавляем как есть
+                normalized.append(header)
+                i += 1
+        else:
+            # Обычный заголовок критерия
+            normalized.append(header)
+            i += 1
+    
+    return normalized
+
+
+def add_missing_columns(worksheet, existing_headers: List[str], new_headers: List[str], criteria: List[Dict]):
     """
     Добавляет недостающие колонки в конец листа
     
     :param worksheet: Объект Worksheet
     :param existing_headers: Существующие заголовки
     :param new_headers: Новые заголовки (полный список)
+    :param criteria: Список критериев для нормализации
+    :return: (updated_headers, structure_changed)
     """
-    missing_headers = []
+    # Очищаем заголовки от пустых строк для корректного сравнения
+    clean_existing = [h.strip() for h in existing_headers if h.strip()]
+    clean_new = [h.strip() for h in new_headers if h.strip()]
     
-    # Находим недостающие заголовки
-    for header in new_headers:
-        if header not in existing_headers:
-            missing_headers.append(header)
+    # Нормализуем заголовки для сравнения (объединяем _text/_eval в единые имена)
+    normalized_existing = normalize_headers_for_comparison(clean_existing, criteria)
+    normalized_new = normalize_headers_for_comparison(clean_new, criteria)
     
-    if missing_headers:
-        print(f"Добавляю {len(missing_headers)} новых колонок: {missing_headers}")
+    print(f"📊 СРАВНЕНИЕ ЗАГОЛОВКОВ:")
+    print(f"  Существующие (исходные): {len(clean_existing)}")
+    print(f"  Существующие (нормализованные): {len(normalized_existing)}")
+    print(f"  Новые (исходные): {len(clean_new)}")
+    print(f"  Новые (нормализованные): {len(normalized_new)}")
+    
+    # Сравниваем нормализованные версии
+    if set(normalized_existing) == set(normalized_new):
+        print("✅ Структура заголовков не изменилась (после нормализации)")
+        return clean_existing, False  # Структура НЕ изменилась
+    
+    # Находим недостающие заголовки в нормализованном виде
+    missing_normalized = []
+    for norm_header in normalized_new:
+        if norm_header not in normalized_existing:
+            missing_normalized.append(norm_header)
+    
+    if missing_normalized:
+        print(f"⚠️ Обнаружены различия в структуре:")
+        print(f"  Недостающие (нормализованные): {missing_normalized}")
         
-        # Обновляем заголовки
-        updated_headers = existing_headers + missing_headers
+        # Находим реальные недостающие заголовки в исходном формате
+        missing_headers = []
+        for header in clean_new:
+            if header not in clean_existing:
+                missing_headers.append(header)
         
-        # Расширяем лист если нужно больше колонок
-        if len(updated_headers) > worksheet.col_count:
-            worksheet.add_cols(len(updated_headers) - worksheet.col_count)
-        
-        # Обновляем первую строку с заголовками
-        worksheet.update(f'1:{len(updated_headers)}', [updated_headers])
-        
-        return updated_headers
+        if missing_headers:
+            print(f"📥 Добавляю {len(missing_headers)} новых колонок: {missing_headers[:5]}{'...' if len(missing_headers) > 5 else ''}")
+            
+            # Обновляем заголовки
+            updated_headers = clean_existing + missing_headers
+            
+            # Расширяем лист если нужно больше колонок
+            if len(updated_headers) > worksheet.col_count:
+                worksheet.add_cols(len(updated_headers) - worksheet.col_count)
+            
+            # Обновляем первую строку с заголовками
+            worksheet.update(f'1:{len(updated_headers)}', [updated_headers])
+            
+            return updated_headers, True  # Структура изменилась
+        else:
+            print("🔄 Структурные изменения без новых колонок - обновляю порядок")
+            
+            # Расширяем лист если нужно больше колонок
+            if len(clean_new) > worksheet.col_count:
+                worksheet.add_cols(len(clean_new) - worksheet.col_count)
+            
+            # Обновляем заголовки в правильном порядке
+            worksheet.update(f'1:{len(clean_new)}', [clean_new])
+            
+            return clean_new, True  # Структура изменилась (порядок)
     else:
-        print("Новых колонок не требуется")
-        return existing_headers
+        print("✅ Колонки полностью совпадают")
+        return clean_existing, False  # Структура НЕ изменилась
 
 
 def filter_new_records(new_rows: List[List[str]], existing_record_ids: set, headers: List[str]) -> List[List[str]]:
@@ -290,6 +388,247 @@ def insert_new_records_at_bottom(worksheet, new_rows: List[List[str]], existing_
         print(f"✅ Добавлено {len(adapted_rows)} записей")
 
 
+def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_info: List[Dict], total_rows: int, need_formatting: bool = True):
+    """
+    Применяет все форматирование одним batch-запросом: ширина колонок, объединение ячеек, стили
+    
+    :param worksheet: Объект Worksheet
+    :param headers: Список заголовков
+    :param criterion_headers_info: Информация о критериях для объединения
+    :param total_rows: Общее количество строк для форматирования
+    :param need_formatting: Нужно ли применять форматирование (только если структура изменилась)
+    """
+    if not need_formatting:
+        print("📋 Структура листа не изменилась, пропускаю форматирование")
+        return
+    
+    print("🎨 Применяю все форматирование одним batch-запросом")
+    
+    try:
+        # Стандартные ширины колонок
+        NARROW_WIDTH = 80   # Для оценок (цифры)
+        MEDIUM_WIDTH = 150  # Для базовых полей
+        WIDE_WIDTH = 250    # Для текстовых описаний
+        
+        # Функция для получения буквы колонки
+        def get_column_letter(col_num):
+            if col_num <= 26:
+                return chr(64 + col_num)
+            else:
+                first_letter = chr(64 + ((col_num - 1) // 26))
+                second_letter = chr(64 + ((col_num - 1) % 26) + 1)
+                return first_letter + second_letter
+        
+        # 1. Обновляем заголовки с учетом объединений
+        updated_headers = headers.copy()
+        
+        for info in criterion_headers_info:
+            if info['type'] == 'merged':
+                start_col = info['start_col']
+                end_col = info['end_col']
+                criterion_name = info['name']
+                
+                updated_headers[start_col] = criterion_name  # Первая колонка - название критерия
+                updated_headers[end_col] = ''  # Вторая колонка - пустая для объединения
+        
+        # Обновляем заголовки
+        worksheet.update('1:1', [updated_headers])
+        print(f"📝 Обновлены заголовки: {len(updated_headers)} колонок")
+        
+        # 2. Подготавливаем batch-запрос
+        requests = []
+        
+        # 2.1 Устанавливаем ширину колонок
+        for i, header in enumerate(headers):
+            # Определяем ширину колонки
+            if header in ['id', 'date', 'phone_number', 'evaluation', 'manager', 'category']:
+                width = MEDIUM_WIDTH
+            elif header == 'dialogue':
+                width = WIDE_WIDTH * 2  # Очень широко для диалога (500px)
+            elif header.endswith('_eval') or header == '':
+                width = NARROW_WIDTH
+            elif header.endswith('_text') or any(info['type'] == 'single' and info['col'] == i for info in criterion_headers_info):
+                width = WIDE_WIDTH
+            else:
+                # Проверяем в criterion_headers_info для объединенных колонок
+                is_text_col = any(info['type'] == 'merged' and info['start_col'] == i for info in criterion_headers_info)
+                is_eval_col = any(info['type'] == 'merged' and info['end_col'] == i for info in criterion_headers_info)
+                
+                if is_eval_col:
+                    width = NARROW_WIDTH
+                elif is_text_col:
+                    width = WIDE_WIDTH
+                else:
+                    width = MEDIUM_WIDTH
+            
+            # Добавляем запрос на установку ширины колонки
+            requests.append({
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "dimension": "COLUMNS",
+                        "startIndex": i,
+                        "endIndex": i + 1
+                    },
+                    "properties": {
+                        "pixelSize": width
+                    },
+                    "fields": "pixelSize"
+                }
+            })
+        
+        # 2.2 Объединяем ячейки для критериев
+        for info in criterion_headers_info:
+            if info['type'] == 'merged':
+                start_col = info['start_col']
+                end_col = info['end_col']
+                
+                requests.append({
+                    "mergeCells": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": start_col,
+                            "endColumnIndex": end_col + 1
+                        },
+                        "mergeType": "MERGE_ALL"
+                    }
+                })
+        
+        # 2.3 Форматирование всех ячеек
+        end_col_letter = get_column_letter(len(headers))
+        
+        # Форматирование данных
+        requests.append({
+            "repeatCell": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": total_rows + 1,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": len(headers)
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "wrapStrategy": "WRAP",
+                        "verticalAlignment": "TOP",
+                        "textFormat": {
+                            "fontSize": 10
+                        }
+                    }
+                },
+                "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
+            }
+        })
+        
+        # Форматирование заголовков
+        requests.append({
+            "repeatCell": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": len(headers)
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {
+                            "red": 0.9,
+                            "green": 0.9,
+                            "blue": 0.9
+                        },
+                        "textFormat": {
+                            "bold": True,
+                            "fontSize": 10
+                        },
+                        "horizontalAlignment": "CENTER"
+                    }
+                },
+                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+            }
+        })
+        
+        # Специальное форматирование для колонки dialogue (без переноса по словам)
+        dialogue_col_index = None
+        try:
+            dialogue_col_index = headers.index('dialogue')
+        except ValueError:
+            pass
+        
+        if dialogue_col_index is not None:
+            requests.append({
+                "repeatCell": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 1,  # Пропускаем заголовки
+                        "endRowIndex": total_rows + 1,
+                        "startColumnIndex": dialogue_col_index,
+                        "endColumnIndex": dialogue_col_index + 1
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "wrapStrategy": "CLIP",  # НЕ переносить по словам
+                            "verticalAlignment": "TOP",
+                            "textFormat": {
+                                "fontSize": 10
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
+                }
+            })
+        
+        # 2.4 Закрепляем первую строку (заголовки)
+        requests.append({
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": worksheet.id,
+                    "gridProperties": {
+                        "frozenRowCount": 1  # Закрепляем первую строку
+                    }
+                },
+                "fields": "gridProperties.frozenRowCount"
+            }
+        })
+        
+        # 2.5 Добавляем автофильтры
+        requests.append({
+            "setBasicFilter": {
+                "filter": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 0,
+                        "endRowIndex": total_rows + 1,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": len(headers)
+                    }
+                }
+            }
+        })
+        
+        # 3. Выполняем batch-запрос
+        spreadsheet = worksheet.spreadsheet
+        spreadsheet.batch_update({"requests": requests})
+        
+        print(f"✅ Batch-форматирование применено:")
+        print(f"  📏 Ширина: {len(headers)} колонок")
+        print(f"  🔗 Объединений: {len([info for info in criterion_headers_info if info['type'] == 'merged'])}")
+        print(f"  🎨 Диапазон: A1:{end_col_letter}{total_rows + 1}")
+        print(f"  📌 Закреплена первая строка (заголовки)")
+        print(f"  🔍 Добавлены автофильтры")
+        
+    except Exception as e:
+        print(f"❌ Ошибка batch-форматирования: {e}")
+        # Fallback: основные настройки
+        try:
+            worksheet.columns_auto_resize(0, len(headers) - 1)
+            print("  🔄 Применен fallback: автоматический размер колонок")
+        except Exception as fallback_e:
+            print(f"  ❌ Ошибка fallback: {fallback_e}")
+
+
 def get_or_create_worksheet(spreadsheet, sheet_name: str, headers: List[str]):
     """
     Получает существующий лист или создает новый с заголовками
@@ -297,18 +636,18 @@ def get_or_create_worksheet(spreadsheet, sheet_name: str, headers: List[str]):
     :param spreadsheet: Объект Google Spreadsheet
     :param sheet_name: Название листа
     :param headers: Список заголовков колонок
-    :return: Объект Worksheet
+    :return: (Объект Worksheet, is_new_sheet)
     """
     try:
         worksheet = spreadsheet.worksheet(sheet_name)
         print(f"Лист '{sheet_name}' найден")
-        return worksheet
+        return worksheet, False  # Существующий лист
         
     except gspread.WorksheetNotFound:
         print(f"Создаю новый лист '{sheet_name}'")
         worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=len(headers))
         worksheet.append_row(headers)
-        return worksheet
+        return worksheet, True  # Новый лист
 
 
 def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dict]) -> tuple:
@@ -318,14 +657,14 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
     :param portal_name: Название портала
     :param portal_data: Данные портала (records, entities, users, etc.)
     :param criteria: Список критериев
-    :return: Кортеж (заголовки, строки данных)
+    :return: Кортеж (заголовки, строки данных, информация об объединении критериев)
     """
     records = portal_data.get('records', [])
     entities = portal_data.get('entities', [])
     users = portal_data.get('users', [])
     
     if not records:
-        return [], []
+        return [], [], []
     
     # Создаем словари для быстрого поиска
     entities_dict = {e['id']: e for e in entities}
@@ -333,14 +672,42 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
     criteria_dict = {c['id']: c for c in criteria}
     
     # Базовые заголовки
-    headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation']
+    headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue']
     
     # Добавляем заголовки для критериев
+    criterion_headers_info = []  # Для отслеживания объединений
+    
     for criterion in criteria:
-        if criterion.get('show_text_description', False):
-            headers.append(criterion['name'])
-        if criterion.get('evaluate_criterion', False):
-            headers.append(f"{criterion['name']} оценка")
+        show_text = criterion.get('show_text_description', False)
+        show_evaluation = criterion.get('evaluate_criterion', False)
+        criterion_name = criterion['name']
+        
+        if show_text and show_evaluation:
+            # И текст И оценка - добавляем 2 колонки, потом объединим заголовок
+            headers.append(f"{criterion_name}_text")  # Временное имя для текста
+            headers.append(f"{criterion_name}_eval")  # Временное имя для оценки
+            criterion_headers_info.append({
+                'type': 'merged',
+                'name': criterion_name,
+                'start_col': len(headers) - 2,  # Индекс первой колонки
+                'end_col': len(headers) - 1     # Индекс второй колонки
+            })
+        elif show_text:
+            # Только текст
+            headers.append(criterion_name)
+            criterion_headers_info.append({
+                'type': 'single',
+                'name': criterion_name,
+                'col': len(headers) - 1
+            })
+        elif show_evaluation:
+            # Только оценка
+            headers.append(criterion_name)
+            criterion_headers_info.append({
+                'type': 'single', 
+                'name': criterion_name,
+                'col': len(headers) - 1
+            })
     
     # Сортируем записи по дате в возрастающем порядке (самые новые внизу)
     sorted_records = sorted(records, key=lambda x: x.get('date', ''), reverse=False)
@@ -377,6 +744,13 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
         record_criteria_list = data.get('criteria', [])
         row_data['evaluation'] = calculate_evaluation_from_record_data(record_criteria_list, criteria)
         
+        # Добавляем текст диалога (ограничиваем длину для удобства)
+        dialogue_text = record.get('dialogue', '') or ''
+        # Ограничиваем до 2000 символов для удобства просмотра
+        if len(dialogue_text) > 2000:
+            dialogue_text = dialogue_text[:2000] + "..."
+        row_data['dialogue'] = dialogue_text
+        
         # Добавляем данные по критериям из data['criteria']
         record_criteria_list = data.get('criteria', [])
         
@@ -386,25 +760,35 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
         for criterion in criteria:
             criterion_id = criterion['id']
             criterion_name = criterion['name']
+            show_text = criterion.get('show_text_description', False)
+            show_evaluation = criterion.get('evaluate_criterion', False)
             
             # Находим данные этого критерия в записи
             record_criterion_data = record_criteria_dict.get(criterion_id, {})
             
-            # Текстовое описание критерия - заполняем только если show_text_description=True
-            if criterion.get('show_text_description', False):
+            if show_text and show_evaluation:
+                # И текст И оценка - заполняем обе временные колонки
+                text_value = record_criterion_data.get('text', '')
+                evaluation_value = record_criterion_data.get('evaluation', '')
+                
+                row_data[f"{criterion_name}_text"] = text_value
+                row_data[f"{criterion_name}_eval"] = evaluation_value if evaluation_value is not None else ''
+                
+            elif show_text:
+                # Только текст
                 text_value = record_criterion_data.get('text', '')
                 row_data[criterion_name] = text_value
-            
-            # Оценка критерия - заполняем только если evaluate_criterion=True
-            if criterion.get('evaluate_criterion', False):
+                
+            elif show_evaluation:
+                # Только оценка
                 evaluation_value = record_criterion_data.get('evaluation', '')
-                row_data[f"{criterion_name} оценка"] = evaluation_value if evaluation_value is not None else ''
+                row_data[criterion_name] = evaluation_value if evaluation_value is not None else ''
         
         # Преобразуем в список значений согласно порядку заголовков
         row_values = [str(row_data.get(header, '')) for header in headers]
         rows.append(row_values)
     
-    return headers, rows
+    return headers, rows, criterion_headers_info
 
 
 def prepare_entities_data(portal_name: str, portal_data: Dict, criteria: List[Dict]) -> tuple:
@@ -518,9 +902,9 @@ async def upload_to_google_sheets(data: Dict):
             criteria = portal_data.get('criteria', [])
             
             # Загружаем записи в лист "Звонки"
-            records_headers, records_rows = prepare_records_data(portal_name, portal_data, criteria)
+            records_headers, records_rows, records_criterion_info = prepare_records_data(portal_name, portal_data, criteria)
             if records_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
-                records_worksheet = get_or_create_worksheet(spreadsheet, "Звонки", records_headers)
+                records_worksheet, is_new_sheet = get_or_create_worksheet(spreadsheet, "Звонки", records_headers)
                 
                 # НОВАЯ ЛОГИКА: Анализируем существующий лист
                 print("🔍 Анализирую существующий лист 'Звонки'")
@@ -530,11 +914,21 @@ async def upload_to_google_sheets(data: Dict):
                 print(f"📋 Существующие колонки: {len(sheet_info['existing_headers'])}")
                 
                 # Добавляем недостающие колонки
-                final_headers = add_missing_columns(
+                final_headers, structure_changed = add_missing_columns(
                     records_worksheet, 
                     sheet_info['existing_headers'], 
-                    records_headers
+                    records_headers,
+                    criteria
                 )
+                
+                # Если это новый лист, форматирование нужно применить обязательно
+                need_formatting = is_new_sheet or structure_changed
+                if is_new_sheet:
+                    print("🆕 Новый лист - применяю полное форматирование")
+                elif structure_changed:
+                    print("🔄 Структура изменилась - применяю форматирование")
+                else:
+                    print("📋 Структура не изменилась - пропускаю форматирование")
                 
                 # Фильтруем только новые записи
                 new_records_only = filter_new_records(
@@ -550,11 +944,21 @@ async def upload_to_google_sheets(data: Dict):
                     sheet_info['existing_headers'], 
                     final_headers
                 )
+                
+                # Применяем все форматирование одним batch-запросом
+                total_data_rows = len(new_records_only) + sheet_info['total_rows']
+                apply_all_formatting_batch(
+                    records_worksheet, 
+                    final_headers, 
+                    records_criterion_info, 
+                    total_data_rows, 
+                    need_formatting=need_formatting
+                )
             
             # Загружаем сущности в лист "Сущности"
             entities_headers, entities_rows = prepare_entities_data(portal_name, portal_data, criteria)
             if entities_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
-                entities_worksheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
+                entities_worksheet, is_new_entities_sheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
                 
                 # НОВАЯ ЛОГИКА: Анализируем существующий лист
                 print("🔍 Анализирую существующий лист 'Сущности'")
@@ -564,11 +968,21 @@ async def upload_to_google_sheets(data: Dict):
                 print(f"📋 Существующие колонки: {len(sheet_info['existing_headers'])}")
                 
                 # Добавляем недостающие колонки
-                final_headers = add_missing_columns(
+                final_headers, structure_changed = add_missing_columns(
                     entities_worksheet, 
                     sheet_info['existing_headers'], 
-                    entities_headers
+                    entities_headers,
+                    criteria
                 )
+                
+                # Если это новый лист, форматирование нужно применить обязательно
+                need_formatting = is_new_entities_sheet or structure_changed
+                if is_new_entities_sheet:
+                    print("🆕 Новый лист сущностей - применяю полное форматирование")
+                elif structure_changed:
+                    print("🔄 Структура сущностей изменилась - применяю форматирование")
+                else:
+                    print("📋 Структура сущностей не изменилась - пропускаю форматирование")
                 
                 # Фильтруем только новые сущности
                 new_entities_only = filter_new_records(
@@ -583,6 +997,16 @@ async def upload_to_google_sheets(data: Dict):
                     new_entities_only, 
                     sheet_info['existing_headers'], 
                     final_headers
+                )
+                
+                # Применяем все форматирование одним batch-запросом для сущностей
+                total_entities_rows = len(new_entities_only) + sheet_info['total_rows']
+                apply_all_formatting_batch(
+                    entities_worksheet, 
+                    final_headers, 
+                    [], # У сущностей нет criterion_info для объединения
+                    total_entities_rows, 
+                    need_formatting=need_formatting
                 )
             
             print(f"✅ Портал {portal_name} обработан успешно")

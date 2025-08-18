@@ -218,7 +218,7 @@ async def load_records_entities_and_users():
     Загружает записи, сущности, пользователей, критерии, категории и группы критериев из БД
     
     Подгружает:
-    - records со статусом 'ready' за последний days_back с полями: id, date, phone_number, data, user_id, entity_id
+    - records со статусом 'ready' за последний days_back с полями: id, date, phone_number, dialogue, data, user_id, entity_id
     - entities с полями: id, crm_entity_type, title, name, lastname, data
     - users с полями: id, name, last_name
     - categories с полями: id, name
@@ -233,7 +233,7 @@ async def load_records_entities_and_users():
     print("Загружаю records со статусом 'ready'...")
     records_data = fetch_data_with_portal_settings(
         status="ready", 
-        fields=["id", "date", "phone_number", "data", "entity_id", "user_id"],  # ✅ Добавляем entity_id и user_id
+        fields=["id", "date", "phone_number", "dialogue", "data", "entity_id", "user_id"],  # ✅ Добавляем dialogue
         analytics_mode=False  # ❌ Отключаем автозагрузку
     )
     
