@@ -95,7 +95,9 @@ def calculate_evaluation_from_record_data(record_criteria_list: List[Dict], crit
         if evaluation is not None and isinstance(evaluation, (int, float)):
             scores.append(float(evaluation))
     
-    return sum(scores) / len(scores) if scores else 0.0
+    # Округляем до десятых (1 знак после запятой)
+    average = sum(scores) / len(scores) if scores else 0.0
+    return round(average, 1)
 
 
 def calculate_evaluation(data: Dict, criteria: List[Dict], include_in_score_only: bool = True, include_in_entity_description: bool = False) -> float:
@@ -133,7 +135,9 @@ def calculate_evaluation(data: Dict, criteria: List[Dict], include_in_score_only
         if score is not None and isinstance(score, (int, float)):
             scores.append(float(score))
     
-    return sum(scores) / len(scores) if scores else 0.0
+    # Округляем до десятых (1 знак после запятой)
+    average = sum(scores) / len(scores) if scores else 0.0
+    return round(average, 1)
 
 
 def analyze_existing_worksheet(worksheet) -> Dict:
@@ -744,11 +748,8 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
         record_criteria_list = data.get('criteria', [])
         row_data['evaluation'] = calculate_evaluation_from_record_data(record_criteria_list, criteria)
         
-        # Добавляем текст диалога (ограничиваем длину для удобства)
+        # Добавляем полный текст диалога
         dialogue_text = record.get('dialogue', '') or ''
-        # Ограничиваем до 2000 символов для удобства просмотра
-        if len(dialogue_text) > 2000:
-            dialogue_text = dialogue_text[:2000] + "..."
         row_data['dialogue'] = dialogue_text
         
         # Добавляем данные по критериям из data['criteria']
