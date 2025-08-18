@@ -1,1 +1,291 @@
-{}
+{
+    "advertpro": {
+        "records": [
+            {
+                "id": "call_494153",
+                "date": "2025-08-18T08:59:47+03:00",
+                "user_id": "11009",
+                "phone_number": "79267560347",
+                "entity_id": "27579",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494155",
+                "date": "2025-08-18T09:01:37+03:00",
+                "user_id": "11009",
+                "phone_number": "+79530059900",
+                "entity_id": "4897",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494157",
+                "date": "2025-08-18T09:03:13+03:00",
+                "user_id": "11009",
+                "phone_number": "+79915778981",
+                "entity_id": "348005",
+                "call_type": "1",
+                "crm_entity_type": "LEAD"
+            },
+            {
+                "id": "call_494161",
+                "date": "2025-08-18T09:29:39+03:00",
+                "user_id": "11009",
+                "phone_number": "79141743433",
+                "entity_id": "27375",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494163",
+                "date": "2025-08-18T09:49:51+03:00",
+                "user_id": "11009",
+                "phone_number": "+74956655777",
+                "entity_id": "190653",
+                "call_type": "2",
+                "crm_entity_type": "LEAD"
+            },
+            {
+                "id": "call_494167",
+                "date": "2025-08-18T10:12:48+03:00",
+                "user_id": "11009",
+                "phone_number": "79271864341",
+                "entity_id": "27621",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494171",
+                "date": "2025-08-18T10:23:01+03:00",
+                "user_id": "13961",
+                "phone_number": "+79851180003",
+                "entity_id": "18231",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494169",
+                "date": "2025-08-18T10:23:18+03:00",
+                "user_id": "11009",
+                "phone_number": "79271864341",
+                "entity_id": "27621",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494173",
+                "date": "2025-08-18T10:25:36+03:00",
+                "user_id": "11009",
+                "phone_number": "+79281117184",
+                "entity_id": "19331",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494175",
+                "date": "2025-08-18T10:54:23+03:00",
+                "user_id": "5271",
+                "phone_number": "+79219776339",
+                "entity_id": "26671",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494179",
+                "date": "2025-08-18T11:03:03+03:00",
+                "user_id": "11009",
+                "phone_number": "+79154658991",
+                "entity_id": "27625",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494181",
+                "date": "2025-08-18T11:12:52+03:00",
+                "user_id": "1591",
+                "phone_number": "89271052288",
+                "entity_id": "12341",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494187",
+                "date": "2025-08-18T11:25:37+03:00",
+                "user_id": "1591",
+                "phone_number": "+79271052288",
+                "entity_id": "12341",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494191",
+                "date": "2025-08-18T11:35:22+03:00",
+                "user_id": "13961",
+                "phone_number": "+79629713842",
+                "entity_id": "25835",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494189",
+                "date": "2025-08-18T11:35:46+03:00",
+                "user_id": "11009",
+                "phone_number": "+79296401192",
+                "entity_id": "27613",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            },
+            {
+                "id": "call_494193",
+                "date": "2025-08-18T11:41:35+03:00",
+                "user_id": "13961",
+                "phone_number": "+79629713842",
+                "entity_id": "25835",
+                "call_type": "1",
+                "crm_entity_type": "CONTACT"
+            }
+        ],
+        "entities": [
+            {
+                "entity_type_id": 3,
+                "entity_id": 4897,
+                "title": null,
+                "name": "Варвара",
+                "lastName": "",
+                "id": 483
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 12341,
+                "title": null,
+                "name": "Иван",
+                "lastName": "",
+                "id": 362
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27625,
+                "title": null,
+                "name": "Giga",
+                "lastName": null,
+                "id": 485
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27621,
+                "title": null,
+                "name": "Максим",
+                "lastName": null,
+                "id": 486
+            },
+            {
+                "entity_type_id": 1,
+                "entity_id": 190653,
+                "title": "+7 495 665-57-77 - Входящий звонок",
+                "name": null,
+                "lastName": null,
+                "id": 487
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 19331,
+                "title": null,
+                "name": "Андрей",
+                "lastName": null,
+                "id": 397
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27579,
+                "title": null,
+                "name": "Виктория",
+                "lastName": null,
+                "id": 43
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 25835,
+                "title": null,
+                "name": "Артур",
+                "lastName": "Михаил",
+                "id": 20
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 18231,
+                "title": null,
+                "name": "Андрей",
+                "lastName": "",
+                "id": 49
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27613,
+                "title": null,
+                "name": "Лика",
+                "lastName": null,
+                "id": 492
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 26671,
+                "title": null,
+                "name": "Антонина",
+                "lastName": "kostis.ru",
+                "id": 18
+            },
+            {
+                "entity_type_id": 3,
+                "entity_id": 27375,
+                "title": null,
+                "name": "Михаил",
+                "lastName": null,
+                "id": 494
+            },
+            {
+                "entity_type_id": 1,
+                "entity_id": 348005,
+                "title": "+7 991 577-89-81 - Входящий звонок",
+                "name": null,
+                "lastName": null,
+                "id": 495
+            }
+        ],
+        "users": [
+            {
+                "id": "11009",
+                "NAME": "Сергей",
+                "LAST_NAME": "Конышев",
+                "UF_DEPARTMENT": [
+                    1223,
+                    2331
+                ]
+            },
+            {
+                "id": "13961",
+                "NAME": "Андрей",
+                "LAST_NAME": "Маркин",
+                "UF_DEPARTMENT": [
+                    2863
+                ]
+            },
+            {
+                "id": "5271",
+                "NAME": "Юлия",
+                "LAST_NAME": "Слеткова",
+                "UF_DEPARTMENT": [
+                    2663
+                ]
+            },
+            {
+                "id": "1591",
+                "NAME": "Елена",
+                "LAST_NAME": "Шуйдина",
+                "UF_DEPARTMENT": [
+                    1771
+                ]
+            }
+        ]
+    }
+}
