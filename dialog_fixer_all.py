@@ -67,7 +67,7 @@ async def process_dialogs(
     :param request_delay: Задержка перед каждым запросом в секундах.
     :param retries: Количество повторных попыток при ошибках.
     :return: Словарь с таблицами, где данные представлены в формате:
-             { 'table_name': { 'records': [ успешно обработанные записи ] } }
+             { 'table_name': { 'records': [ успешно обработанные записи с обновленными dialogue, summary и status ] } }
     """
     semaphore = asyncio.Semaphore(max_concurrent_requests)
     tasks = []
@@ -99,6 +99,8 @@ async def process_dialogs(
             else:
                 # Обновляем текст диалога результатом анализа
                 row["dialogue"] = result["content"]
+                # Добавляем резюме диалога
+                row["summary"] = result["summary"]
                 # Обновляем статус на 'fixed' после успешной обработки
                 row["status"] = "fixed"
                 processed_table.append(row)

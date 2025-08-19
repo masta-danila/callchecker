@@ -79,6 +79,7 @@ def create_tables(*table_names):
                             title VARCHAR(255),                             -- Название/заголовок сущности
                             name VARCHAR(255),                              -- Имя
                             lastName VARCHAR(255),                          -- Фамилия
+                            summary TEXT,                                   -- Необязательное поле (Краткое резюме сущности)
                             data JSONB DEFAULT '{{}}',                      -- Дополнительные данные о сущности
                             UNIQUE(crm_entity_type, entity_id)              -- Уникальность комбинации тип+ID
                         );
@@ -108,6 +109,7 @@ def create_tables(*table_names):
                             id TEXT PRIMARY KEY NOT NULL,       -- Обязательное поле (ID записи с префиксом call_)
                             date TIMESTAMP NOT NULL,            -- Обязательное поле (Дата звонка)
                             dialogue TEXT,                      -- Необязательное поле (Текст диалога)
+                            summary TEXT,                       -- Необязательное поле (Краткое резюме диалога)
                             data JSONB,                         -- Необязательное поле (Дополнительные данные)
                             status status_enum NOT NULL,        -- Обязательное поле (ENUM для статусов)
                             audio_metadata JSONB,               -- Необязательное поле (Метаинформация об аудио)
@@ -204,6 +206,8 @@ def create_tables(*table_names):
                             ON {table_name}_entities(crm_entity_type);
                         CREATE INDEX IF NOT EXISTS idx_{table_name}_entities_entity_id 
                             ON {table_name}_entities(entity_id);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_entities_summary_gin 
+                            ON {table_name}_entities USING gin(to_tsvector('russian', summary));
                         
                         -- Индексы для таблицы users
                         CREATE INDEX IF NOT EXISTS idx_{table_name}_users_id 
@@ -224,6 +228,8 @@ def create_tables(*table_names):
                             ON {table_name}(entity_id);
                         CREATE INDEX IF NOT EXISTS idx_{table_name}_status_date 
                             ON {table_name}(status, date);
+                        CREATE INDEX IF NOT EXISTS idx_{table_name}_summary_gin 
+                            ON {table_name} USING gin(to_tsvector('russian', summary));
 
                     """
                     cur.execute(create_indexes_query)
