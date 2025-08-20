@@ -272,9 +272,8 @@ def fetch_data(status: str = None, fields: list[str] = None, analytics_mode: boo
                     result[table]["categories"] = categories
                     result[table]["criteria"] = criteria
 
-    # Если analytics_mode=True, подгружаем данные сущностей для каждой таблицы
-    if analytics_mode:
-                for table in tables:
+                # Если analytics_mode=True, подгружаем данные сущностей для этой таблицы
+                if analytics_mode:
                     entity_ids = list(table_entity_ids[table])
                     entities = []
                     if entity_ids:
