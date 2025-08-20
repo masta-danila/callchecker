@@ -55,10 +55,11 @@ async def process_record(record):
 if __name__ == "__main__":
     sample_record = {
         "audio_metadata": {
-            "uri": "storage://s3.api.tinkoff.ai/inbound/493235.mp3",
-            "encoding": "MPEG_AUDIO",
-            "num_channels": 2,
-            "sample_rate_hertz": 8000
+        "uri": "storage://s3.api.tinkoff.ai/inbound/call_494197.mp3",
+        "duration": 4.82,
+        "encoding": "MPEG_AUDIO",
+        "num_channels": 2,
+        "sample_rate_hertz": 8000
         }
     }
 

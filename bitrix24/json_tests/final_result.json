@@ -1,8 +1,8 @@
 {
     "advertpro": {
         "db_update_stats": {
-            "total_records": 16,
-            "updated_records": 16,
+            "total_records": 63,
+            "updated_records": 63,
             "success_rate": 1.0
         }
     }

@@ -4,7 +4,7 @@ from llm_router import llm_request
 
 
 PROMPT = """
-Ты профессиональный аналитик и редактор сырых диалогов. Проанализируй диалог менеджера из АдвертПро с клиентом. 
+Ты профессиональный аналитик и редактор сырых диалогов. Проанализируй диалог менеджера (помечен буквой М) с клиентом (помечен буквой К). 
 Определи тематику разговора. Исправь слова в диалоге на их правильное написание согласно тематике если они не подходят 
 по контексту всего диалога, например: 
 - "посев" на "SEO"; 
@@ -22,11 +22,16 @@ PROMPT = """
 - добавить знаки препинания;
 - изменить строчные буквы на заглавные в начале предложений;
 - в конце каждой фразы добавить символ переноса строки;
-- определить какая из цифровых меток в диалоге 0 или 1 относится к менеджеру компании АдвертПро.
+Также составь краткое резюме разговора. Сформулируй резюме максимально кратко, но при этом понятно, отрази основные моменты.
+В резюме спикеров указывай как менеджер и клиент.
+В резюме не используй ничего не значащие обороты, типа на настоящий момент, в настоящее время и прочее. 
+В резюме не ставь переносы строк.
+В резюме сокращай слова и словосочетания в тексте по общепринятым стандартам сокращений. 
+В резюме используй официальные правила сокращений, принятые в русском языке.
 Ответ выдай строго в виде словаря следующего синтаксиса (без доп символов и кавычек, синтаксис словаря должен быть с 
 таким же набором фигурных скобок и двойных кавычек, обрамлять словарь в доп символы запрещено):
 {"text": "исправленный текст полностью",
-"manager_id": номер метки менеджера (1 или 0)}
+"summary": "резюме разговора"}
 Кроме словаря вставлять что-то в ответ запрещено.
 Текст диалога:
 """
@@ -35,10 +40,25 @@ PROMPT = """
 async def fix_dialog(dialog_text: str) -> dict:
     """
     Асинхронная функция для анализа диалога с помощью chatgpt_request
-    :param dialog_text: Текст диалога
-    :return: Ответ от chatgpt_request в виде словаря с замененными метками (М и К)
+    :param dialog_text: Текст диалога с метками 0: и 1:
+    :return: Ответ от chatgpt_request в виде словаря с исправленным текстом и резюме
     """
-    combined_text = f"{PROMPT}\n\n{dialog_text}"
+    # Заменяем метки 0: и 1: на К: и М: перед отправкой в LLM
+    preprocessed_dialog = []
+    for line in dialog_text.split("\n"):
+        if line.strip().startswith("0:"):
+            # 0 - это клиент
+            new_line = line.replace("0:", "К:", 1)
+        elif line.strip().startswith("1:"):
+            # 1 - это менеджер
+            new_line = line.replace("1:", "М:", 1)
+        else:
+            new_line = line
+        preprocessed_dialog.append(new_line)
+    
+    # Объединяем препроцессированный диалог
+    preprocessed_text = "\n".join(preprocessed_dialog)
+    combined_text = f"{PROMPT}\n\n{preprocessed_text}"
 
     loop = asyncio.get_running_loop()
     response = await loop.run_in_executor(
@@ -50,33 +70,15 @@ async def fix_dialog(dialog_text: str) -> dict:
         ]
     )
 
-    # Разбираем JSON-ответ
+    # Разбираем JSON-ответ (теперь {"text": "...", "summary": "..."})
     response_data = json.loads(response["content"])
     fixed_text = response_data["text"]
-    manager_id = response_data["manager_id"]
+    summary = response_data["summary"]
     cost = response["cost"]
 
-    # Определяем замену
-    manager_symbol = "М"
-    client_symbol = "К"
-
-    # Обновляем диалог, заменяя метки 0 и 1
-    updated_dialog = []
-    for line in fixed_text.split("\n"):
-        if line.startswith("1:"):
-            new_line = line.replace("1:", f"{manager_symbol}:", 1) if manager_id == 1 else line.replace("1:",
-                                                                                                        f"{client_symbol}:",
-                                                                                                        1)
-        elif line.startswith("0:"):
-            new_line = line.replace("0:", f"{client_symbol}:", 1) if manager_id == 1 else line.replace("0:",
-                                                                                                       f"{manager_symbol}:",
-                                                                                                       1)
-        else:
-            new_line = line
-        updated_dialog.append(new_line)
-
     return {
-        "content": "\n".join(updated_dialog),
+        "content": fixed_text,
+        "summary": summary,
         "cost": cost
     }
 

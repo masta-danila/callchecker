@@ -9,6 +9,7 @@ async def process_item(
     item: dict,
     categories: list,
     criteria_definitions: list,
+    entities: list,
     max_retries: int,
     retry_delay: float,
     semaphore: asyncio.Semaphore
@@ -16,11 +17,12 @@ async def process_item(
     """
     Обрабатывает одну запись (item):
       1. Если в item["data"] уже присутствуют непустые поля "categories" и "criteria", пропускает обработку.
-      2. Извлекает диалог и вызывает assign_category.
-      3. Форматирует выбранные категории как список словарей {id, name}.
-      4. Собирает все id критериев из выбранных категорий.
-      5. Формирует итоговый список критериев {id, name} по данным из criteria_definitions.
-      6. Сохраняет результат в item["data"].
+      2. Извлекает диалог и ищет summary в связанной сущности (если entity_id указан).
+      3. Вызывает assign_category с диалогом и summary (если найден).
+      4. Форматирует выбранные категории как список словарей {id, name}.
+      5. Собирает все id критериев из выбранных категорий.
+      6. Формирует итоговый список критериев {id, name} по данным из criteria_definitions.
+      7. Сохраняет результат в item["data"].
       Возвращает True при успешной обработке или выбрасывает исключение после исчерпания попыток.
     """
     # Пропускаем уже обработанные записи
@@ -30,11 +32,20 @@ async def process_item(
         return True
 
     dialogue = item.get("dialogue", "")
+    
+    # Ищем summary из связанной сущности
+    entity_summary = ""
+    entity_id = item.get("entity_id")
+    if entity_id:
+        for entity in entities:
+            if entity.get("id") == entity_id and entity.get("summary"):
+                entity_summary = entity["summary"].strip()
+                break
 
     for attempt in range(max_retries):
         try:
             async with semaphore:
-                result = await assign_category(dialogue, {"categories": categories})
+                result = await assign_category(dialogue, {"categories": categories}, entity_summary)
 
             if not isinstance(result, dict) or "categories" not in result:
                 raise ValueError("Result from assign_category is not in the expected format.")
@@ -121,6 +132,7 @@ async def classify_dialogs(
         records = group.get("records", [])
         group_categories = group.get("categories", [])
         group_criteria = group.get("criteria", [])
+        group_entities = group.get("entities", [])
 
         for item in records:
             task = asyncio.create_task(
@@ -128,6 +140,7 @@ async def classify_dialogs(
                     item,
                     group_categories,
                     group_criteria,
+                    group_entities,
                     max_retries,
                     retry_delay,
                     semaphore
@@ -245,7 +258,26 @@ if __name__ == "__main__":
                     "llm_type": "standard"
                 }
             ],
-            "entities": []
+            "entities": [
+                {
+                    "id": 1,
+                    "crm_entity_type": "DEAL",
+                    "entity_id": 100,
+                    "title": "Заявка на SEO продвижение",
+                    "name": "Анна",
+                    "lastName": "Петрова",
+                    "summary": "Клиент Анна обращалась по поводу услуги создания сайта. Обсуждались услуги разработки, стоимость 50-70 тысяч. Клиент ищет подрядчика на следующий сезон."
+                },
+                {
+                    "id": 2,
+                    "crm_entity_type": "DEAL", 
+                    "entity_id": 200,
+                    "title": "Заявка на разработку сайта",
+                    "name": "Евгений",
+                    "lastName": "Иванов",
+                    "summary": "Клиент заинтересован в создании сайта для продажи дверей. Обсуждались домены, переоформление, патентование названий. Планируется запуск к маю."
+                }
+            ]
         },
         "test": {
             "records": [
@@ -343,7 +375,26 @@ if __name__ == "__main__":
                     "llm_type": "standard"
                 }
             ],
-            "entities": []
+            "entities": [
+                {
+                    "id": 1,
+                    "crm_entity_type": "DEAL",
+                    "entity_id": 100,
+                    "title": "Заявка на создание сайта",
+                    "name": "Евгений",
+                    "lastName": "Иванов", 
+                    "summary": "Клиент заинтересован в создании сайта для продажи дверей. Обсуждались домены, переоформление, патентование названий. Планируется запуск к маю."
+                },
+                {
+                    "id": 2,
+                    "crm_entity_type": "DEAL",
+                    "entity_id": 200,
+                    "title": "Заявка на SEO продвижение",
+                    "name": "Анна",
+                    "lastName": "Петрова",
+                    "summary": "Клиент Анна обращалась по поводу SEO-продвижения сайта. Обсуждались услуги продвижения, стоимость 50-70 тысяч. Клиент ищет подрядчика на следующий сезон для продвижения сайта компании."
+                }
+            ]
         }
     }
 

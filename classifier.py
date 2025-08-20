@@ -4,28 +4,35 @@ from llm_router import llm_request
 import json
 
 PROMPT1 = """
-Ты - ассистент по анализу диалогов между менеджерами компании АдвертПро и клиентами. Твоя задача - проанализировать 
-разговор и определить, к каким из категорий принадлежит диалог.
-Текст диалога:
+Ты - профессиональный ассистент по анализу диалогов между менеджером (М) и клиентом (К). Твоя задача - проанализировать 
+диалог и определить, к каким из категорий принадлежит диалог. 
 """
 
 PROMPT2 = """
-Категории для классификации представлены в виде словаря с ключом "categories", где значение - список объектов, описывающих категории:
+Текст диалога:
 """
 
 PROMPT3 = """
+Введение:
+"""
+
+PROMPT4 = """
+Категории для классификации представлены в виде словаря с ключом "categories", где значение - список объектов, описывающих категории:
+"""
+
+PROMPT5 = """
 Ответ выдай строго в виде списка следующего синтаксиса (без доп символов и кавычек, синтаксис списка должен быть с таким 
 же набором квадратных скобок и двойных кавычек, обрамлять список в доп символы запрещено):
 ["Категория 1", "Категория 2"]
 """
 
 
-async def assign_category(text: str, categories: dict) -> dict:
+async def assign_category(text: str, categories: dict, summary: str = None) -> dict:
     """
     Асинхронная функция, которая:
-      1. Принимает text (строка с диалогом) и categories (словарь категорий в формате categories_example_new)
+      1. Принимает text (строка с диалогом), categories (словарь категорий), и опционально summary (резюме предыдущих разговоров)
       2. Формирует единый запрос, состоящий из:
-         PROMPT1 + текст диалога + PROMPT2 + JSON-представление словаря + PROMPT3
+         PROMPT1 + PROMPT2 + PROMPT3 + summary (если есть) + текст диалога + PROMPT4 + JSON-представление словаря + PROMPT5
       3. Делает синхронный запрос через deepseek_request (через run_in_executor)
       4. Ожидает ответ, содержащий список имен выбранных категорий
       5. Находит полные объекты категорий из исходного словаря, сопоставляя их по имени, и возвращает только поля "id" и "name"
@@ -33,14 +40,34 @@ async def assign_category(text: str, categories: dict) -> dict:
     """
     loop = asyncio.get_running_loop()
 
-    # Преобразуем словарь категорий в отформатированную строку JSON
-    categories_str = json.dumps(categories, ensure_ascii=False, indent=4)
+    # Формируем упрощенный словарь категорий только с name и prompt
+    simplified_categories = {
+        "categories": [
+            {
+                "name": category["name"],
+                "prompt": category["prompt"]
+            }
+            for category in categories.get("categories", [])
+        ]
+    }
+    
+    # Преобразуем упрощенный словарь в JSON строку
+    categories_str = json.dumps(simplified_categories, ensure_ascii=False, indent=4)
+
+    # Формируем секцию диалога с введением (если есть summary)
+    dialog_section = f"{PROMPT2}"
+    
+    if summary and summary.strip():
+        dialog_section += f"{PROMPT3}\n{summary.strip()}"
+    
+    dialog_section += f"{text}"
 
     # Формируем единый промпт
     combined_prompt = (
-        f"{PROMPT1}\n{text}\n"
-        f"{PROMPT2}\n{categories_str}\n"
-        f"{PROMPT3}"
+        f"{PROMPT1}"
+        f"{dialog_section}"
+        f"{PROMPT4}\n{categories_str}"
+        f"{PROMPT5}"
     )
 
     messages = [
@@ -137,7 +164,26 @@ if __name__ == "__main__":
     0: да да да спасибо буду ждать
     1: до свидания
     """
-    text_example = "М: Приложение идите."
+    # text_example = "М: Приложение идите."
+        
+    text_example = """
+    М: Алло, добрый день.
+    К: Здравствуйте.
+    М: Как дела с проектом?
+    К: Пока думаем.
+    М: Хорошо, свяжемся позже.
+    К: До свидания.
+    """
+    
+    #Тестовое резюме, которое дает контекст
+    test_summary = """
+    Клиент Анна из компании-производителя гидроизоляции обращалась к менеджеру Роману по поводу SEO-продвижения сайта. 
+    Обсуждались услуги продвижения сайта в Google и Яндекс, стоимость работ 50-70 тысяч рублей в месяц. 
+    Клиент ищет подрядчика на следующий сезон для продвижения сайта компании. 
+    Менеджер предложил разработать коммерческое предложение. Сделка заключена, клиент оплатил продвижение. Менеджер попросил клиента согласовать семантическое ядро.
+    """
+
+    # test_summary = ""
 
     categories_example = {
         "categories": [
@@ -275,6 +321,7 @@ if __name__ == "__main__":
             }
         ]}
 
-    # Запуск асинхронной функции
-    result_sample = asyncio.run(assign_category(text_example, categories_example))
+    result_sample = asyncio.run(assign_category(text_example, categories_example, test_summary))
     print(json.dumps(result_sample, indent=4, ensure_ascii=False))
+    
+   

@@ -26,7 +26,7 @@ async def main(delay: int):
         # Сохраняем отладочные данные
         save_debug_json(records, "records")
 
-        print("Шаг 2: Исправляю тексты диалогов")
+        print("Шаг 2: Исправляю тексты диалогов и получаю резюме диалогов")
         processed_records = await process_dialogs(
             records,
             max_concurrent_requests=50,
@@ -43,50 +43,50 @@ async def main(delay: int):
         print("Шаг 4: Получаю диалоги для анализа из БД")
         fixed_records = fetch_data(
             status="fixed",
-            fields=["id", "dialogue", "data", "user_id", "entity_id", "date"],
+            fields=["id", "dialogue", "data", "user_id", "entity_id", "date" , "summary"],
             analytics_mode=True
         )
 
         # Сохраняем отладочные данные
         save_debug_json(fixed_records, "fixed_records")
 
-        print("Шаг 5: Классифицирую диалоги")
-        classified_records = await classify_dialogs(
-            fixed_records,
-            max_concurrent_requests=50,
-            retry_delay=0.1,
-            max_retries=3
-        )
+        # print("Шаг 5: Классифицирую диалоги")
+        # classified_records = await classify_dialogs(
+        #     fixed_records,
+        #     max_concurrent_requests=50,
+        #     retry_delay=0.1,
+        #     max_retries=3
+        # )
 
-        # Сохраняем отладочные данные
-        save_debug_json(classified_records, "classified_records") 
+        # # Сохраняем отладочные данные
+        # save_debug_json(classified_records, "classified_records") 
 
-        print("Шаг 6: Провожу анализ диалогов согласно критериям")
-        analyzed_records = await analyze_criteria(
-            classified_records,
-            max_concurrent_requests=500,
-            retry_delay=0.1,
-            max_retries=3
-        )
+        # print("Шаг 6: Провожу анализ диалогов согласно критериям")
+        # analyzed_records = await analyze_criteria(
+        #     classified_records,
+        #     max_concurrent_requests=500,
+        #     retry_delay=0.1,
+        #     max_retries=3
+        # )
 
 
-        # Сохраняем отладочные данные
-        save_debug_json(analyzed_records, "analyzed_records")
+        # # Сохраняем отладочные данные
+        # save_debug_json(analyzed_records, "analyzed_records")
         
-        print("Шаг 7: Суммирую данные сущностей")
-        final_records = await summarize_entity_descriptions(
-            analyzed_records,
-            max_text_size=1000,
-            max_concurrent_requests=50,
-            request_delay=0.1,
-            retries=3
-        )
+        # print("Шаг 7: Суммирую данные сущностей")
+        # final_records = await summarize_entity_descriptions(
+        #     analyzed_records,
+        #     max_text_size=1000,
+        #     max_concurrent_requests=50,
+        #     request_delay=0.1,
+        #     retries=3
+        # )
 
-        # Сохраняем отладочные данные
-        save_debug_json(final_records, "final_records")
+        # # Сохраняем отладочные данные
+        # save_debug_json(final_records, "final_records")
         
-        print("Шаг 8: Загружаю итоговые данные в БД")
-        upload_full_data_from_dict(final_records, status='ready')
+        # print("Шаг 8: Загружаю итоговые данные в БД")
+        # upload_full_data_from_dict(final_records, status='ready')
         
         print("Все шаги успешно выполнены! Ожидаю перед следующим циклом...")
         await asyncio.sleep(delay)
