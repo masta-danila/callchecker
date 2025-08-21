@@ -191,7 +191,7 @@ def normalize_headers_for_comparison(headers: List[str], criteria: List[Dict]) -
     :return: Нормализованные заголовки
     """
     normalized = []
-    base_headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue']
+    base_headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue', 'summary']
     
     # Создаем карту объединенных критериев
     merged_criteria = {}
@@ -449,6 +449,8 @@ def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_
                 width = MEDIUM_WIDTH
             elif header == 'dialogue':
                 width = WIDE_WIDTH * 2  # Очень широко для диалога (500px)
+            elif header == 'summary':
+                width = WIDE_WIDTH  # Широко для краткого резюме
             elif header.endswith('_eval') or header == '':
                 width = NARROW_WIDTH
             elif header.endswith('_text') or any(info['type'] == 'single' and info['col'] == i for info in criterion_headers_info):
@@ -554,13 +556,19 @@ def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_
             }
         })
         
-        # Специальное форматирование для колонки dialogue (без переноса по словам)
+        # Специальное форматирование для колонок dialogue и summary (без переноса по словам)
         dialogue_col_index = None
+        summary_col_index = None
         try:
             dialogue_col_index = headers.index('dialogue')
         except ValueError:
             pass
+        try:
+            summary_col_index = headers.index('summary')
+        except ValueError:
+            pass
         
+        # Форматирование для dialogue
         if dialogue_col_index is not None:
             requests.append({
                 "repeatCell": {
@@ -574,6 +582,30 @@ def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_
                     "cell": {
                         "userEnteredFormat": {
                             "wrapStrategy": "CLIP",  # НЕ переносить по словам
+                            "verticalAlignment": "TOP",
+                            "textFormat": {
+                                "fontSize": 10
+                            }
+                        }
+                    },
+                    "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
+                }
+            })
+        
+        # Форматирование для summary
+        if summary_col_index is not None:
+            requests.append({
+                "repeatCell": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": 1,  # Пропускаем заголовки
+                        "endRowIndex": total_rows + 1,
+                        "startColumnIndex": summary_col_index,
+                        "endColumnIndex": summary_col_index + 1
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "wrapStrategy": "WRAP",  # Переносить по словам
                             "verticalAlignment": "TOP",
                             "textFormat": {
                                 "fontSize": 10
@@ -676,7 +708,7 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
     criteria_dict = {c['id']: c for c in criteria}
     
     # Базовые заголовки
-    headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue']
+    headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue', 'summary']
     
     # Добавляем заголовки для критериев
     criterion_headers_info = []  # Для отслеживания объединений
@@ -752,6 +784,10 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
         dialogue_text = record.get('dialogue', '') or ''
         row_data['dialogue'] = dialogue_text
         
+        # Добавляем краткое резюме диалога
+        summary_text = record.get('summary', '') or ''
+        row_data['summary'] = summary_text
+        
         # Добавляем данные по критериям из data['criteria']
         record_criteria_list = data.get('criteria', [])
         
@@ -799,23 +835,51 @@ def prepare_entities_data(portal_name: str, portal_data: Dict, criteria: List[Di
     :param portal_name: Название портала
     :param portal_data: Данные портала (records, entities, users, etc.)
     :param criteria: Список критериев
-    :return: Кортеж (заголовки, строки данных)
+    :return: Кортеж (заголовки, строки данных, информация об объединении критериев)
     """
     entities = portal_data.get('entities', [])
     
     if not entities:
-        return [], []
+        return [], [], []
     
     # Базовые заголовки
-    headers = ['id', 'crm_entity_type', 'name', 'evaluation']
+    headers = ['id', 'crm_entity_type', 'name', 'evaluation', 'summary']
     
     # Добавляем заголовки для критериев (только те, что включены в описание сущности)
+    criterion_headers_info = []  # Для отслеживания объединений
+    
     for criterion in criteria:
         if criterion.get('include_in_entity_description', False):
-            if criterion.get('show_text_description', False):
-                headers.append(criterion['name'])
-            if criterion.get('evaluate_criterion', False):
-                headers.append(f"{criterion['name']} оценка")
+            show_text = criterion.get('show_text_description', False)
+            show_evaluation = criterion.get('evaluate_criterion', False)
+            criterion_name = criterion['name']
+            
+            if show_text and show_evaluation:
+                # И текст И оценка - добавляем 2 колонки, потом объединим заголовок
+                headers.append(f"{criterion_name}_text")  # Временное имя для текста
+                headers.append(f"{criterion_name}_eval")  # Временное имя для оценки
+                criterion_headers_info.append({
+                    'type': 'merged',
+                    'name': criterion_name,
+                    'start_col': len(headers) - 2,  # Индекс первой колонки
+                    'end_col': len(headers) - 1     # Индекс второй колонки
+                })
+            elif show_text:
+                # Только текст
+                headers.append(criterion_name)
+                criterion_headers_info.append({
+                    'type': 'single',
+                    'name': criterion_name,
+                    'col': len(headers) - 1
+                })
+            elif show_evaluation:
+                # Только оценка
+                headers.append(criterion_name)
+                criterion_headers_info.append({
+                    'type': 'single', 
+                    'name': criterion_name,
+                    'col': len(headers) - 1
+                })
     
     # Сортируем сущности по ID в возрастающем порядке (новые внизу)
     sorted_entities = sorted(entities, key=lambda x: x.get('id', 0), reverse=False)
@@ -839,36 +903,69 @@ def prepare_entities_data(portal_name: str, portal_data: Dict, criteria: List[Di
         full_name = ' '.join(name_parts) if name_parts else 'Без имени'
         row_data['name'] = full_name
         
-        # Вычисляем evaluation (только критерии с include_in_score=True и include_in_entity_description=True)
+        # Вычисляем evaluation для сущности
         data = entity.get('data', {})
+        entity_criteria_list = data.get('criteria', [])
+        
+        # Преобразуем список критериев сущности в словарь для совместимости с calculate_evaluation
+        if isinstance(entity_criteria_list, list):
+            entity_criteria_dict = {}
+            for ec in entity_criteria_list:
+                if ec.get('id') and ec.get('evaluation') is not None:
+                    entity_criteria_dict[str(ec['id'])] = {'score': ec['evaluation']}
+        else:
+            entity_criteria_dict = {}
+        
         row_data['evaluation'] = calculate_evaluation(
-            data, criteria, 
+            entity_criteria_dict, criteria, 
             include_in_score_only=True, 
             include_in_entity_description=True
         )
         
+        # Добавляем краткое резюме сущности
+        summary_text = entity.get('summary', '') or ''
+        row_data['summary'] = summary_text
+        
         # Добавляем данные по критериям (только те, что включены в описание сущности)
+        # В сущностях criteria хранится как список, а не словарь
+        entity_criteria_list = data.get('criteria', [])
+        entity_criteria_dict = {ec.get('id'): ec for ec in entity_criteria_list} if isinstance(entity_criteria_list, list) else {}
+        
         for criterion in criteria:
             if not criterion.get('include_in_entity_description', False):
                 continue
                 
-            criterion_id = str(criterion['id'])
-            criterion_data = data.get(criterion_id, {})
+            criterion_id = criterion['id']
+            criterion_name = criterion['name']
+            show_text = criterion.get('show_text_description', False)
+            show_evaluation = criterion.get('evaluate_criterion', False)
             
-            # Текстовое описание критерия
-            if criterion.get('show_text_description', False):
-                row_data[criterion['name']] = criterion_data.get('description', '')
+            # Находим данные этого критерия в сущности
+            entity_criterion_data = entity_criteria_dict.get(criterion_id, {})
             
-            # Оценка критерия
-            if criterion.get('evaluate_criterion', False):
-                score = criterion_data.get('score', '')
-                row_data[f"{criterion['name']} оценка"] = score if score is not None else ''
+            if show_text and show_evaluation:
+                # И текст И оценка - заполняем обе временные колонки
+                text_value = entity_criterion_data.get('text', '')
+                eval_value = entity_criterion_data.get('evaluation', '')
+                
+                row_data[f"{criterion_name}_text"] = text_value
+                row_data[f"{criterion_name}_eval"] = eval_value if eval_value is not None else ''
+                
+            elif show_text:
+                # Только текст
+                text_value = entity_criterion_data.get('text', '')
+                row_data[criterion_name] = text_value
+                
+            elif show_evaluation:
+                # Только оценка
+                eval_value = entity_criterion_data.get('evaluation', '')
+                row_data[criterion_name] = eval_value if eval_value is not None else ''
         
         # Преобразуем в список значений согласно порядку заголовков
         row_values = [str(row_data.get(header, '')) for header in headers]
         rows.append(row_values)
     
-    return headers, rows
+    return headers, rows, criterion_headers_info
 
 
 async def upload_to_google_sheets(data: Dict):
@@ -957,7 +1054,7 @@ async def upload_to_google_sheets(data: Dict):
                 )
             
             # Загружаем сущности в лист "Сущности"
-            entities_headers, entities_rows = prepare_entities_data(portal_name, portal_data, criteria)
+            entities_headers, entities_rows, entities_criterion_info = prepare_entities_data(portal_name, portal_data, criteria)
             if entities_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
                 entities_worksheet, is_new_entities_sheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
                 
@@ -1005,7 +1102,7 @@ async def upload_to_google_sheets(data: Dict):
                 apply_all_formatting_batch(
                     entities_worksheet, 
                     final_headers, 
-                    [], # У сущностей нет criterion_info для объединения
+                    entities_criterion_info, # Теперь у сущностей есть criterion_info для объединения
                     total_entities_rows, 
                     need_formatting=need_formatting
                 )

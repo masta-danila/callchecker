@@ -10,7 +10,7 @@
     "1M output tokens": 0.4
   },
     "gpt-4o-mini": {
-    "1M input tokens": 0.150,
+    "1M input tokens": 0.15,
     "1M cached** input tokens": 0.075,
     "1M output tokens": 0.6
   },
@@ -31,5 +31,20 @@
     "1M TOKENS OUTPUT": 2.19,
     "DISCOUNT TIME": "UTC 16:30-00:30",
       "DISCOUNT": 0.75
+  },
+  "gpt-5": {
+    "1M input tokens": 1.25,
+    "1M cached** input tokens": 0.125,
+    "1M output tokens": 10
+  },
+  "gpt-5-mini": {
+    "1M input tokens": 0.25,
+    "1M cached** input tokens": 0.025,
+    "1M output tokens": 2
+  },
+  "gpt-5-nano": {
+    "1M input tokens": 0.05,
+    "1M cached** input tokens": 0.005,
+    "1M output tokens": 0.4
   }
 }

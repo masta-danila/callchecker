@@ -10,6 +10,7 @@ async def process_item(
     categories: list,
     criteria_definitions: list,
     entities: list,
+    all_records: list,
     max_retries: int,
     retry_delay: float,
     semaphore: asyncio.Semaphore
@@ -17,8 +18,11 @@ async def process_item(
     """
     Обрабатывает одну запись (item):
       1. Если в item["data"] уже присутствуют непустые поля "categories" и "criteria", пропускает обработку.
-      2. Извлекает диалог и ищет summary в связанной сущности (если entity_id указан).
-      3. Вызывает assign_category с диалогом и summary (если найден).
+      2. Извлекает диалог и формирует расширенный контекст:
+         - Ищет summary в связанной сущности (если entity_id указан)
+         - Ищет summary из предыдущих записей той же сущности (по дате)
+         - Объединяет в хронологическом порядке
+      3. Вызывает assign_category с диалогом и расширенным контекстом.
       4. Форматирует выбранные категории как список словарей {id, name}.
       5. Собирает все id критериев из выбранных категорий.
       6. Формирует итоговый список критериев {id, name} по данным из criteria_definitions.
@@ -33,19 +37,63 @@ async def process_item(
 
     dialogue = item.get("dialogue", "")
     
-    # Ищем summary из связанной сущности
-    entity_summary = ""
+    print(f"Обработка элемента {item.get('id')}")
+    
+    # Формируем расширенный контекст из summary сущности и предыдущих записей
+    extended_summary = ""
     entity_id = item.get("entity_id")
+    current_date = item.get("date")
+    
     if entity_id:
+        # 1. Ищем summary из связанной сущности
+        entity_summary = ""
         for entity in entities:
             if entity.get("id") == entity_id and entity.get("summary"):
                 entity_summary = entity["summary"].strip()
                 break
+        
+        # 2. Ищем все записи той же сущности, которые старше текущей записи
+        related_records = []
+        if current_date and all_records:
+            for record in all_records:
+                record_entity_id = record.get("entity_id")
+                record_date = record.get("date")
+                record_summary = record.get("summary", "")
+                
+                # Проверяем: та же сущность, более старая дата, есть summary
+                if (record_entity_id == entity_id and 
+                    record_date and current_date and
+                    record_date < current_date and 
+                    record_summary.strip()):
+                    related_records.append({
+                        "date": record_date,
+                        "summary": record_summary.strip()
+                    })
+            
+            # Сортируем по дате (старые -> новые)
+            related_records.sort(key=lambda x: x["date"])
+        
+        # 3. Формируем итоговый расширенный summary
+        summary_parts = []
+        
+        # Добавляем summary сущности (общий контекст)
+        if entity_summary:
+            summary_parts.append(f"Общий контекст: {entity_summary}")
+        
+        # Добавляем summary из предыдущих звонков в хронологическом порядке
+        if related_records:
+            for i, record in enumerate(related_records, 1):
+                summary_parts.append(f"Звонок {i}: {record['summary']}")
+        
+        # Объединяем все части
+        if summary_parts:
+            extended_summary = "\n".join(summary_parts)
+            print(f"Расширенный контекст для записи {item.get('id')}: найдено {len(related_records)} связанных записей")
 
     for attempt in range(max_retries):
         try:
             async with semaphore:
-                result = await assign_category(dialogue, {"categories": categories}, entity_summary)
+                result = await assign_category(dialogue, {"categories": categories}, extended_summary)
 
             if not isinstance(result, dict) or "categories" not in result:
                 raise ValueError("Result from assign_category is not in the expected format.")
@@ -89,7 +137,7 @@ async def process_item(
                 "criteria": criteria_details
             }
 
-            print(f"Успешно обработан элемент: {item.get('id')} (попытка {attempt + 1})")
+            print(f"Элемент {item.get('id')} обработан")
             return True
 
         except Exception as e:
@@ -141,6 +189,7 @@ async def classify_dialogs(
                     group_categories,
                     group_criteria,
                     group_entities,
+                    records,  # Передаем все записи группы для поиска связанных записей
                     max_retries,
                     retry_delay,
                     semaphore
@@ -160,16 +209,49 @@ async def classify_dialogs(
 
 
 if __name__ == "__main__":
-    # Пример входного словаря нового формата
+    # Тестовые данные для проверки работы расширенного контекста
     data_dict = {
         "advertpro": {
             "records": [
+                # Звонок 1: Первичное обращение (самый старый)
                 {
-                    "id": "2025-01-29 16-32-34 +79067571133.mp3",
-                    "dialogue": "К: Алло, да.\nМ: Алло.\nК: Сбросилось. В общем, тогда завтра я вам все высылаю, списываемся, убираем время и обсуждаем. Вот уже т бизнес нет. Все, Евгений, хорошего вечера, до завтра.\nМ: Да, угу, да, да, да, да, спасибо, до завтра.\nК: До свидания.\n",
+                    "id": "call_001",
+                    "date": "2025-01-28T10:00:00",
+                    "dialogue": "К: Добрый день.\nМ: Здравствуйте.\nК: Я по поводу создания сайта обращаюсь.\nМ: Понятно, расскажите подробнее.\nК: Нужен сайт для металлических дверей, под ключ.\nМ: Хорошо, подготовлю коммерческое предложение.",
                     "data": None,
                     "user_id": 1,
-                    "entity_id": 1
+                    "entity_id": 1,
+                    "summary": "Первичное обращение клиента по созданию сайта для металлических дверей. Обсуждены базовые требования, менеджер пообещал подготовить КП."
+                },
+                # Звонок 2: Обсуждение КП (средний по времени)
+                {
+                    "id": "call_002", 
+                    "date": "2025-01-29T14:20:00",
+                    "dialogue": "К: Алло.\nМ: Добрый день, это по поводу сайта для дверей.\nК: Да, получил ваше предложение.\nМ: Как впечатления?\nК: В целом устраивает, но есть вопросы по срокам.\nМ: Давайте обсудим детали.",
+                    "data": None,
+                    "user_id": 1,
+                    "entity_id": 1,
+                    "summary": "Обсуждение коммерческого предложения. Клиента устраивает цена, есть вопросы по срокам реализации."
+                },
+                # Звонок 3: Текущий разговор (самый новый) - БЕЗ SUMMARY, чтобы проверить работу контекста
+                {
+                    "id": "call_003",
+                    "date": "2025-01-30T16:30:00", 
+                    "dialogue": "К: Привет.\nМ: Добрый день.\nК: Как дела с проектом?\nМ: Работаем, все идет по плану.\nК: Отлично, жду результат.",
+                    "data": None,
+                    "user_id": 1,
+                    "entity_id": 1,
+                    "summary": ""  # Пустое - для этого диалога будет использован расширенный контекст
+                },
+                # Звонок 4: Другая сущность для проверки изоляции
+                {
+                    "id": "call_004",
+                    "date": "2025-01-29T11:00:00",
+                    "dialogue": "К: Здравствуйте.\nМ: Добрый день.\nК: Интересует продвижение сайта.\nМ: Расскажите о вашем проекте.",
+                    "data": None,
+                    "user_id": 1,
+                    "entity_id": 2,
+                    "summary": "Обращение по поводу SEO-продвижения сайта гидроизоляции."
                 },
                 {
                     "id": "2025-03-11 15-11-25 +79214078077.mp3",
@@ -263,19 +345,19 @@ if __name__ == "__main__":
                     "id": 1,
                     "crm_entity_type": "DEAL",
                     "entity_id": 100,
-                    "title": "Заявка на SEO продвижение",
-                    "name": "Анна",
-                    "lastName": "Петрова",
-                    "summary": "Клиент Анна обращалась по поводу услуги создания сайта. Обсуждались услуги разработки, стоимость 50-70 тысяч. Клиент ищет подрядчика на следующий сезон."
+                    "title": "Заявка на создание сайта дверей",
+                    "name": "Евгений",
+                    "lastName": "Петров",
+                    "summary": "Клиент заинтересован в создании сайта для продажи металлических дверей. Планируется комплексная разработка под ключ с последующим продвижением."
                 },
                 {
                     "id": 2,
                     "crm_entity_type": "DEAL", 
                     "entity_id": 200,
-                    "title": "Заявка на разработку сайта",
-                    "name": "Евгений",
-                    "lastName": "Иванов",
-                    "summary": "Клиент заинтересован в создании сайта для продажи дверей. Обсуждались домены, переоформление, патентование названий. Планируется запуск к маю."
+                    "title": "Заявка на SEO-продвижение",
+                    "name": "Анна",
+                    "lastName": "Иванова",
+                    "summary": "Клиент из сферы гидроизоляции ищет подрядчика для SEO-продвижения. Есть опыт работы с другими подрядчиками, но результаты неудовлетворительные."
                 }
             ]
         },
@@ -397,7 +479,7 @@ if __name__ == "__main__":
             ]
         }
     }
-
+    
     updated_data = asyncio.run(
         classify_dialogs(
             data_dict,
@@ -406,4 +488,5 @@ if __name__ == "__main__":
             max_concurrent_requests=50  # лимит параллельных запросов
         )
     )
+    
     print(json.dumps(updated_data, indent=4, ensure_ascii=False))

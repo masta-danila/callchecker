@@ -56,6 +56,7 @@ async def process_client_data(dialogue: str, data: dict) -> dict:
 
     description = data.get("prompt", "")
     prompt = f"{PROMPT1}{description}\nТекст диалога:{dialogue}{PROMPT2}"
+    print(prompt)
 
     messages = [
         {"role": "user", "content": prompt}

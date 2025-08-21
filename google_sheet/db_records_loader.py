@@ -42,7 +42,7 @@ def fetch_entities_for_records(portal_name: str, records: list) -> list:
         with conn.cursor() as cursor:
             try:
                 query = f"""
-                    SELECT id, crm_entity_type, entity_id, title, name, lastname, data 
+                    SELECT id, crm_entity_type, entity_id, title, name, lastname, data, summary 
                     FROM {portal_name}_entities 
                     WHERE id = ANY(%s)
                 """
@@ -51,7 +51,7 @@ def fetch_entities_for_records(portal_name: str, records: list) -> list:
                 rows = cursor.fetchall()
                 
                 # Преобразуем в словари
-                column_names = ['id', 'crm_entity_type', 'entity_id', 'title', 'name', 'lastname', 'data']
+                column_names = ['id', 'crm_entity_type', 'entity_id', 'title', 'name', 'lastname', 'data', 'summary']
                 for row in rows:
                     entity = dict(zip(column_names, row))
                     entities.append(entity)
@@ -218,8 +218,8 @@ async def load_records_entities_and_users():
     Загружает записи, сущности, пользователей, критерии, категории и группы критериев из БД
     
     Подгружает:
-    - records со статусом 'ready' за последний days_back с полями: id, date, phone_number, dialogue, data, user_id, entity_id
-    - entities с полями: id, crm_entity_type, title, name, lastname, data
+    - records со статусом 'ready' за последний days_back с полями: id, date, phone_number, dialogue, summary, data, user_id, entity_id
+    - entities с полями: id, crm_entity_type, title, name, lastname, data, summary
     - users с полями: id, name, last_name
     - categories с полями: id, name
     - criteria с полями: id, name, group_id, show_text_description, evaluate_criterion, include_in_score, include_in_entity_description
@@ -233,7 +233,7 @@ async def load_records_entities_and_users():
     print("Загружаю records со статусом 'ready'...")
     records_data = fetch_data_with_portal_settings(
         status="ready", 
-        fields=["id", "date", "phone_number", "dialogue", "data", "entity_id", "user_id"],  # ✅ Добавляем dialogue
+        fields=["id", "date", "phone_number", "dialogue", "summary", "data", "entity_id", "user_id"],  # ✅ Добавляем dialogue и summary
         analytics_mode=False  # ❌ Отключаем автозагрузку
     )
     
