@@ -191,7 +191,7 @@ def normalize_headers_for_comparison(headers: List[str], criteria: List[Dict]) -
     :return: Нормализованные заголовки
     """
     normalized = []
-    base_headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue', 'summary']
+    base_headers = ['id', 'date', 'phone_number', 'manager', 'entity_name', 'category', 'evaluation', 'dialogue', 'summary']
     
     # Создаем карту объединенных критериев
     merged_criteria = {}
@@ -350,12 +350,13 @@ def filter_new_records(new_rows: List[List[str]], existing_record_ids: set, head
     return filtered_rows
 
 
-def insert_new_records_at_bottom(worksheet, new_rows: List[List[str]], existing_headers: List[str], final_headers: List[str]):
+def insert_new_records_at_bottom(worksheet, new_rows: List[List], existing_headers: List[str], final_headers: List[str]):
     """
     Добавляет новые записи в конец листа, сохраняя старые данные
+    Поддерживает формулы через batch API
     
     :param worksheet: Объект Worksheet
-    :param new_rows: Новые строки для добавления
+    :param new_rows: Новые строки для добавления (могут содержать объекты формул)
     :param existing_headers: Исходные заголовки листа
     :param final_headers: Финальные заголовки (с новыми колонками)
     """
@@ -386,10 +387,164 @@ def insert_new_records_at_bottom(worksheet, new_rows: List[List[str]], existing_
     
     print(f"Добавляю {len(adapted_rows)} новых записей в конец листа")
     
-    # Добавляем строки в конец листа
-    if adapted_rows:
-        worksheet.append_rows(adapted_rows)
-        print(f"✅ Добавлено {len(adapted_rows)} записей")
+    # Проверяем, есть ли формулы в данных
+    has_formulas = any(
+        any(isinstance(cell, dict) and 'formula' in cell for cell in row)
+        for row in adapted_rows
+    )
+    
+    if has_formulas:
+        # Используем batch API для записи формул
+        _insert_rows_with_formulas_batch(worksheet, adapted_rows)
+    else:
+        # Используем обычный append_rows для простых данных
+        simple_rows = [[str(cell) for cell in row] for row in adapted_rows]
+        worksheet.append_rows(simple_rows)
+    
+    print(f"✅ Добавлено {len(adapted_rows)} записей")
+
+
+def _insert_rows_with_formulas_batch(worksheet, rows_with_formulas):
+    """
+    Вспомогательная функция для вставки строк с формулами через batch API
+    """
+    # Определяем начальную позицию (после всех существующих данных)
+    # Нужно использовать количество строк с данными, а не row_count листа
+    all_values = worksheet.get_all_values()
+    start_row = len(all_values) + 1
+    
+    # Расширяем лист если нужно
+    needed_rows = start_row + len(rows_with_formulas)
+    if needed_rows > worksheet.row_count:
+        worksheet.add_rows(needed_rows - worksheet.row_count)
+    
+    # Подготавливаем batch-запрос
+    requests = []
+    
+    for row_idx, row in enumerate(rows_with_formulas):
+        current_row = start_row + row_idx
+        
+        for col_idx, cell_value in enumerate(row):
+            if isinstance(cell_value, dict) and 'formula' in cell_value:
+                # Это формула - используем formulaValue
+                requests.append({
+                    "updateCells": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": current_row - 1,  # 0-based
+                            "endRowIndex": current_row,
+                            "startColumnIndex": col_idx,
+                            "endColumnIndex": col_idx + 1
+                        },
+                        "rows": [{
+                            "values": [{
+                                "userEnteredValue": {"formulaValue": cell_value['formula']}
+                            }]
+                        }],
+                        "fields": "userEnteredValue"
+                    }
+                })
+            elif str(cell_value):  # Только если значение не пустое
+                # Обычное значение - используем stringValue
+                requests.append({
+                    "updateCells": {
+                        "range": {
+                            "sheetId": worksheet.id,
+                            "startRowIndex": current_row - 1,  # 0-based
+                            "endRowIndex": current_row,
+                            "startColumnIndex": col_idx,
+                            "endColumnIndex": col_idx + 1
+                        },
+                        "rows": [{
+                            "values": [{
+                                "userEnteredValue": {"stringValue": str(cell_value)}
+                            }]
+                        }],
+                        "fields": "userEnteredValue"
+                    }
+                })
+    
+    # Выполняем batch-запрос
+    if requests:
+        spreadsheet = worksheet.spreadsheet
+        # Разбиваем на чанки по 100 запросов (лимит API)
+        chunk_size = 100
+        for i in range(0, len(requests), chunk_size):
+            chunk = requests[i:i + chunk_size]
+            spreadsheet.batch_update({"requests": chunk})
+        
+        print(f"✅ Записано {len(requests)} ячеек через batch API")
+
+
+def fix_hyperlink_formulas(worksheet, headers: List[str], start_row: int, num_rows: int):
+    """
+    Исправляет формулы гиперссылок в колонке entity_name, убирая апострофы
+    
+    :param worksheet: Объект Worksheet
+    :param headers: Список заголовков для определения позиции entity_name
+    :param start_row: Начальная строка (1-based)
+    :param num_rows: Количество строк для обработки
+    """
+    try:
+        entity_name_index = headers.index('entity_name')
+    except ValueError:
+        print("Колонка entity_name не найдена, пропускаю исправление формул")
+        return
+    
+    print(f"🔧 Исправляю формулы гиперссылок в колонке entity_name (столбец {entity_name_index + 1})")
+    
+    # Получаем все значения в колонке entity_name
+    col_letter = chr(ord('A') + entity_name_index)  # Конвертируем индекс в букву колонки
+    range_name = f"{col_letter}{start_row}:{col_letter}{start_row + num_rows - 1}"
+    
+    try:
+        values = worksheet.get(range_name)
+        if not values:
+            print("Нет данных для исправления")
+            return
+            
+        # Подготавливаем batch-запрос для исправления формул
+        requests = []
+        
+        for i, row in enumerate(values):
+            if row and len(row) > 0:
+                cell_value = row[0]
+                # Проверяем, является ли значение формулой HYPERLINK
+                if isinstance(cell_value, str) and 'HYPERLINK' in cell_value:
+                    # Убираем апостроф, если он есть в начале
+                    clean_formula = cell_value.lstrip("'")
+                    
+                    if clean_formula != cell_value:  # Если было изменение
+                        row_num = start_row + i
+                        
+                        requests.append({
+                            "updateCells": {
+                                "range": {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": row_num - 1,  # 0-based
+                                    "endRowIndex": row_num,
+                                    "startColumnIndex": entity_name_index,
+                                    "endColumnIndex": entity_name_index + 1
+                                },
+                                "rows": [{
+                                    "values": [{
+                                        "userEnteredValue": {"formulaValue": clean_formula}
+                                    }]
+                                }],
+                                "fields": "userEnteredValue"
+                            }
+                        })
+        
+        # Выполняем batch-запрос
+        if requests:
+            spreadsheet = worksheet.spreadsheet
+            spreadsheet.batch_update({"requests": requests})
+            print(f"✅ Исправлено {len(requests)} формул гиперссылок")
+        else:
+            print("Нет формул для исправления")
+            
+    except Exception as e:
+        print(f"❌ Ошибка при исправлении формул: {e}")
 
 
 def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_info: List[Dict], total_rows: int, need_formatting: bool = True):
@@ -445,7 +600,7 @@ def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_
         # 2.1 Устанавливаем ширину колонок
         for i, header in enumerate(headers):
             # Определяем ширину колонки
-            if header in ['id', 'date', 'phone_number', 'evaluation', 'manager', 'category']:
+            if header in ['id', 'date', 'phone_number', 'evaluation', 'manager', 'entity_name', 'category']:
                 width = MEDIUM_WIDTH
             elif header == 'dialogue':
                 width = WIDE_WIDTH * 2  # Очень широко для диалога (500px)
@@ -686,13 +841,14 @@ def get_or_create_worksheet(spreadsheet, sheet_name: str, headers: List[str]):
         return worksheet, True  # Новый лист
 
 
-def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dict]) -> tuple:
+def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dict], entities_sheet_id: int = None) -> tuple:
     """
     Подготавливает данные записей для загрузки в Google Sheets
     
     :param portal_name: Название портала
     :param portal_data: Данные портала (records, entities, users, etc.)
     :param criteria: Список критериев
+    :param entities_sheet_id: ID листа "Сущности" для создания гиперссылок
     :return: Кортеж (заголовки, строки данных, информация об объединении критериев)
     """
     records = portal_data.get('records', [])
@@ -708,7 +864,7 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
     criteria_dict = {c['id']: c for c in criteria}
     
     # Базовые заголовки
-    headers = ['id', 'date', 'phone_number', 'manager', 'category', 'evaluation', 'dialogue', 'summary']
+    headers = ['id', 'date', 'phone_number', 'manager', 'entity_name', 'category', 'evaluation', 'dialogue', 'summary']
     
     # Добавляем заголовки для критериев
     criterion_headers_info = []  # Для отслеживания объединений
@@ -770,6 +926,42 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
         
         row_data['manager'] = manager_name
         
+        # Имя сущности из связанной entity с гиперссылкой
+        entity_id = record.get('entity_id')
+        entity_name_with_link = ''
+        
+        if entity_id and entity_id in entities_dict:
+            entity = entities_dict[entity_id]
+            # Формируем имя сущности
+            title = entity.get('title', '') or ''
+            name = entity.get('name', '') or ''
+            lastname = entity.get('lastname', '') or ''
+            name_parts = [part for part in [title, name, lastname] if part and part != 'None']
+            entity_full_name = ' '.join(name_parts) if name_parts else f'Сущность {entity_id}'
+            
+            # Создаем формулу гиперссылки на лист "Сущности"
+            if entities_sheet_id is not None:
+                # Находим позицию сущности в отсортированном списке для правильного номера строки
+                sorted_entities = sorted(entities, key=lambda x: x.get('id', 0), reverse=False)
+                entity_row = None
+                for idx, ent in enumerate(sorted_entities):
+                    if ent.get('id') == entity_id:
+                        entity_row = idx + 2  # +2 потому что: +1 для заголовков, +1 для 1-based индексации
+                        break
+                
+                if entity_row:
+                    # Создаем специальный объект для формулы вместо строки
+                    entity_name_with_link = {
+                        'formula': f'=HYPERLINK("#gid={entities_sheet_id}&range=A{entity_row}"; "{entity_full_name}")',
+                        'display_text': entity_full_name
+                    }
+                else:
+                    entity_name_with_link = entity_full_name  # Fallback без ссылки
+            else:
+                entity_name_with_link = entity_full_name  # Если нет ID листа, показываем просто имя
+        
+        row_data['entity_name'] = entity_name_with_link
+        
         # Категория из data['categories']
         data = record.get('data', {})
         categories_list = data.get('categories', [])
@@ -822,7 +1014,14 @@ def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dic
                 row_data[criterion_name] = evaluation_value if evaluation_value is not None else ''
         
         # Преобразуем в список значений согласно порядку заголовков
-        row_values = [str(row_data.get(header, '')) for header in headers]
+        row_values = []
+        for header in headers:
+            value = row_data.get(header, '')
+            # Если это объект формулы, сохраняем как есть для последующей обработки
+            if isinstance(value, dict) and 'formula' in value:
+                row_values.append(value)
+            else:
+                row_values.append(str(value))
         rows.append(row_values)
     
     return headers, rows, criterion_headers_info
@@ -999,8 +1198,16 @@ async def upload_to_google_sheets(data: Dict):
             # Получаем критерии для портала
             criteria = portal_data.get('criteria', [])
             
-            # Загружаем записи в лист "Звонки"
-            records_headers, records_rows, records_criterion_info = prepare_records_data(portal_name, portal_data, criteria)
+            # Сначала создаем/получаем лист "Сущности" чтобы получить его ID
+            entities_headers, entities_rows, entities_criterion_info = prepare_entities_data(portal_name, portal_data, criteria)
+            entities_sheet_id = None
+            
+            if entities_headers:  # Если есть сущности
+                entities_worksheet, is_new_entities_sheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
+                entities_sheet_id = entities_worksheet.id
+            
+            # Загружаем записи в лист "Звонки" (передаем ID листа сущностей для гиперссылок)
+            records_headers, records_rows, records_criterion_info = prepare_records_data(portal_name, portal_data, criteria, entities_sheet_id)
             if records_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
                 records_worksheet, is_new_sheet = get_or_create_worksheet(spreadsheet, "Звонки", records_headers)
                 
@@ -1053,10 +1260,8 @@ async def upload_to_google_sheets(data: Dict):
                     need_formatting=need_formatting
                 )
             
-            # Загружаем сущности в лист "Сущности"
-            entities_headers, entities_rows, entities_criterion_info = prepare_entities_data(portal_name, portal_data, criteria)
+            # Обрабатываем сущности (лист уже создан выше)
             if entities_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
-                entities_worksheet, is_new_entities_sheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
                 
                 # НОВАЯ ЛОГИКА: Анализируем существующий лист
                 print("🔍 Анализирую существующий лист 'Сущности'")
