@@ -74,7 +74,7 @@ def insert_data(table_name: str,
         conn.close()
 
 
-def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict = None):
+def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict = None, summary: str = None):
     """
     Проверяет, существует ли запись с указанным entity_id в таблице сущностей.
     Если записи нет, добавляет новую запись.
@@ -83,6 +83,7 @@ def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict =
         table_name (str): Название основной таблицы (без постфикса _entities).
         entity_id (int): Идентификатор сущности для проверки.
         entity_data (dict, optional): Дополнительные данные для поля data.
+        summary (str, optional): Краткое резюме сущности для поля summary.
     """
     conn = get_db_client()
     cursor = conn.cursor()
@@ -94,16 +95,16 @@ def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict =
 
         if not result:
             # Если запись не найдена, добавляем новую запись
-            insert_query = f"INSERT INTO {table_name}_entities (id, data) VALUES (%s, %s)"
+            insert_query = f"INSERT INTO {table_name}_entities (id, data, summary) VALUES (%s, %s, %s)"
             data_json = json.dumps(entity_data) if entity_data else '{}'
-            cursor.execute(insert_query, (entity_id, data_json))
+            cursor.execute(insert_query, (entity_id, data_json, summary))
             conn.commit()
             print(f"Сущность с id {entity_id} добавлена в таблицу {table_name}_entities.")
         else:
-            # Если запись существует, обновляем данные
-            update_query = f"UPDATE {table_name}_entities SET data = %s WHERE id = %s"
+            # Если запись существует, обновляем данные и summary
+            update_query = f"UPDATE {table_name}_entities SET data = %s, summary = %s WHERE id = %s"
             data_json = json.dumps(entity_data) if entity_data else '{}'
-            cursor.execute(update_query, (data_json, entity_id))
+            cursor.execute(update_query, (data_json, summary, entity_id))
             conn.commit()
             print(f"Сущность с id {entity_id} обновлена в таблице {table_name}_entities.")
     except Exception as e:

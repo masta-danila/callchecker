@@ -113,8 +113,9 @@ def upload_full_data_from_dict(data_dict: dict, status: str):
             for entity in table_data["entities"]:
                 entity_id = entity.get("id")
                 entity_data = entity.get("data", {})
+                entity_summary = entity.get("summary", "")
                 if entity_id:
-                    check_and_insert_entity(table_name, entity_id, entity_data)
+                    check_and_insert_entity(table_name, entity_id, entity_data, entity_summary)
             print(f"Загружено {len(table_data['entities'])} entities для таблицы {table_name}")
     
     print("Загрузка records и entities завершена!")
