@@ -44,7 +44,7 @@
   },
   "gpt-5-nano": {
     "1M input tokens": 0.05,
-    "1M cached** input tokens": 0.005,
+    "1M cached** input tokens": 0.005,  
     "1M output tokens": 0.4
   }
 }

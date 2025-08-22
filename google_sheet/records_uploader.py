@@ -50,7 +50,7 @@ def calculate_evaluation_from_record_data(record_criteria_data: List[Dict], crit
     
     return round(sum(evaluations) / len(evaluations), 1) if evaluations else 0.0
 
-def prepare_records_data(portal_data: Dict) -> Tuple[List[str], List[List]]:
+def prepare_records_data(portal_data: Dict, spreadsheet_id: str = '', entities_sheet_gid: str = '0', entities_rows_map: Dict = None) -> Tuple[List[str], List[List]]:
     """Подготавливает данные записей для загрузки в Google Sheets."""
     records = portal_data.get('records', [])
     users = portal_data.get('users', [])
@@ -97,7 +97,7 @@ def prepare_records_data(portal_data: Dict) -> Tuple[List[str], List[List]]:
             manager_name = f"{name} {last_name}".strip()
         row.append(manager_name)
         
-        # Имя сущности (title + name + lastname)
+        # Имя сущности с гиперссылкой на лист "Сущности" (title + name + lastname)
         entity_id = record.get('entity_id')
         entity_name = ''
         if entity_id and entity_id in entities_dict:
@@ -106,7 +106,16 @@ def prepare_records_data(portal_data: Dict) -> Tuple[List[str], List[List]]:
             name = entity.get('name', '') or ''
             lastname = entity.get('lastname', '') or ''
             name_parts = [part for part in [title, name, lastname] if part and part != 'None']
-            entity_name = ' '.join(name_parts) if name_parts else f'Сущность {entity_id}'
+            display_name = ' '.join(name_parts) if name_parts else f'Сущность {entity_id}'
+            
+            # Создаем гиперссылку на соответствующую строку в листе "Сущности"
+            if spreadsheet_id and entities_rows_map and str(entity_id) in entities_rows_map:
+                # Полная ссылка на конкретную строку сущности в Google Sheets
+                entity_row = entities_rows_map[str(entity_id)]
+                full_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit#gid={entities_sheet_gid}&range=A{entity_row}"
+                entity_name = {"formula": f'=HYPERLINK("{full_url}"; "{display_name}")'}
+            else:
+                entity_name = display_name
         row.append(entity_name)
         
         # Категория из data['categories']
@@ -352,7 +361,10 @@ async def insert_records_batch(worksheet, rows: List[List], spreadsheet):
         for col_idx, cell_value in enumerate(row):
             # Определяем тип значения для корректной записи
             user_value = {}
-            if isinstance(cell_value, (int, float)):
+            if isinstance(cell_value, dict) and 'formula' in cell_value:
+                # Обрабатываем формулы (например, гиперссылки)
+                user_value = {"formulaValue": cell_value['formula']}
+            elif isinstance(cell_value, (int, float)):
                 user_value = {"numberValue": float(cell_value)}
             elif cell_value is None or cell_value == '':
                 user_value = {"stringValue": ""}
@@ -386,6 +398,25 @@ async def insert_records_batch(worksheet, rows: List[List], spreadsheet):
         
         print(f"✅ Добавлено {len(rows)} записей через batch API")
 
+async def get_entities_rows_map(spreadsheet, sheet_name: str) -> Dict[str, int]:
+    """Получает карту ID сущностей к номерам строк в листе."""
+    try:
+        worksheet = await spreadsheet.worksheet(sheet_name)
+        all_values = await worksheet.get_all_values()
+        
+        entities_map = {}
+        if len(all_values) > 1:  # Пропускаем заголовок
+            for row_idx, row in enumerate(all_values[1:], start=2):  # Начинаем с строки 2
+                if row and len(row) > 0:
+                    entity_id = row[0]  # ID в первой колонке
+                    entities_map[entity_id] = row_idx
+        
+        print(f"🗺️  Создана карта строк для {len(entities_map)} сущностей")
+        return entities_map
+    except Exception as e:
+        print(f"⚠️  Не удалось создать карту строк сущностей: {e}")
+        return {}
+
 async def upload_records_to_google_sheets(portal_data: Dict, portal_config: Dict):
     """Основная функция для загрузки записей в Google Sheets."""
     portal_url = portal_config.get('url', 'Unknown')
@@ -397,15 +428,26 @@ async def upload_records_to_google_sheets(portal_data: Dict, portal_config: Dict
 
     print(f"📊 Загружаю данные для портала {portal_url} в Google Sheets...")
 
-    # Подготавливаем данные
-    headers, rows = prepare_records_data(portal_data)
-    if not rows:
-        print("📝 Нет записей для загрузки")
-        return
-
     # Подключаемся к Google Sheets
     client = await get_google_sheets_client()
     spreadsheet = await client.open_by_key(spreadsheet_id)
+
+    # Получаем gid листа "Сущности" и карту строк для гиперссылок
+    entities_sheet_gid = '0'  # По умолчанию
+    entities_rows_map = {}
+    try:
+        entities_worksheet = await spreadsheet.worksheet("Сущности")
+        entities_sheet_gid = str(entities_worksheet.id)
+        # Получаем карту строк сущностей для точных ссылок
+        entities_rows_map = await get_entities_rows_map(spreadsheet, "Сущности")
+    except:
+        pass  # Лист "Сущности" может еще не существовать
+
+    # Пересоздаем данные с правильным gid и картой строк для гиперссылок
+    headers, rows = prepare_records_data(portal_data, spreadsheet_id, entities_sheet_gid, entities_rows_map)
+    if not rows:
+        print("📝 Нет записей для загрузки")
+        return
 
     # Получаем или создаем лист "Звонки"
     worksheet = await get_or_create_worksheet(spreadsheet, "Звонки")
