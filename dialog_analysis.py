@@ -33,7 +33,7 @@ async def main(delay: int):
         print("Шаг 2: Исправляю тексты диалогов и получаю резюме диалогов")
         processed_records = await process_dialogs(
             records,
-            max_concurrent_requests=50,
+            max_concurrent_requests=500,
             request_delay=0.1,
             retries=3
         )
@@ -57,7 +57,7 @@ async def main(delay: int):
         print("Шаг 5: Классифицирую диалоги")
         classified_records = await classify_dialogs(
             fixed_records,
-            max_concurrent_requests=50,
+            max_concurrent_requests=500,
             retry_delay=0.1,
             max_retries=3
         )
@@ -81,7 +81,7 @@ async def main(delay: int):
         final_records = await summarize_entity_descriptions(
             analyzed_records,
             max_text_size=1000,
-            max_concurrent_requests=50,
+            max_concurrent_requests=500,
             request_delay=0.1,
             retries=3
         )
@@ -93,7 +93,7 @@ async def main(delay: int):
         entities_with_aggregated_summaries = await aggregate_entity_summaries(
             final_records,
             max_text_size=1000,
-            max_concurrent_requests=50,
+            max_concurrent_requests=500,
             request_delay=0.1,
             retries=3
         )

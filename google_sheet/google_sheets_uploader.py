@@ -1,1346 +1,474 @@
-"""
-Google Sheets Uploader - загрузка данных в Google таблицы
-
-Этот модуль загружает данные из БД в Google таблицы согласно настройкам в bitrix24/bitrix_portals.json
-
-Основные функции:
-- upload_records_to_sheets: Загрузка записей в лист "Звонки"
-- upload_entities_to_sheets: Загрузка сущностей в лист "Сущности"
-
-Автор: AI Assistant
-Дата: 2024
-"""
-
-import asyncio
 import json
-import os
-import sys
-from typing import Dict, List, Any
-
-# Добавляем корневую папку в путь для импорта модулей
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import gspread_asyncio
 import gspread
 from google.oauth2.service_account import Credentials
-from debug_utils import save_debug_json
+from typing import Dict, List, Tuple
+import os
+import asyncio
 
+# Настройки для Google Sheets API
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'bitrix24/google_sheets_credentials.json')
 
-def load_google_credentials():
-    """Загружает учетные данные Google Sheets"""
-    credentials_path = os.path.join(os.path.dirname(__file__), '..', 'bitrix24', 'google_sheets_credentials.json')
-    
-    if not os.path.exists(credentials_path):
-        raise FileNotFoundError(f"Файл учетных данных не найден: {credentials_path}")
-    
-    scope = [
-        'https://spreadsheets.google.com/feeds',
-        'https://www.googleapis.com/auth/drive'
-    ]
-    
-    credentials = Credentials.from_service_account_file(credentials_path, scopes=scope)
-    return gspread.authorize(credentials)
-
-
-def load_portal_settings():
-    """Загружает настройки порталов из bitrix_portals.json"""
-    portals_path = os.path.join(os.path.dirname(__file__), '..', 'bitrix24', 'bitrix_portals.json')
-    
-    if not os.path.exists(portals_path):
-        raise FileNotFoundError(f"Файл настроек порталов не найден: {portals_path}")
-    
-    with open(portals_path, 'r', encoding='utf-8') as f:
-        config = json.load(f)
-    
-    # Преобразуем массив порталов в словарь по названию портала
-    portals_dict = {}
-    for portal in config.get('portals', []):
-        # Извлекаем название портала из URL
-        url = portal.get('url', '')
-        if 'bitrix24.ru' in url:
-            portal_name = url.split('//')[1].split('.')[0]  # Извлекаем название из URL
-            portals_dict[portal_name] = portal
-    
-    return portals_dict
-
-
-def calculate_evaluation_from_record_data(record_criteria_list: List[Dict], criteria_config: List[Dict]) -> float:
-    """
-    Вычисляет среднее арифметическое оценок из data['criteria'] записи
-    
-    :param record_criteria_list: Список критериев из data['criteria'] записи
-    :param criteria_config: Конфигурация критериев из БД
-    :return: Среднее арифметическое оценок
-    """
-    if not record_criteria_list or not criteria_config:
-        return 0.0
-    
-    # Создаем словарь конфигурации критериев по ID
-    criteria_config_dict = {c['id']: c for c in criteria_config}
-    
-    scores = []
-    for record_criterion in record_criteria_list:
-        criterion_id = record_criterion.get('id')
-        evaluation = record_criterion.get('evaluation')
-        
-        # Проверяем, есть ли конфигурация для этого критерия
-        criterion_config = criteria_config_dict.get(criterion_id)
-        if not criterion_config:
-            continue
-            
-        # Учитываем только критерии с include_in_score=True
-        if not criterion_config.get('include_in_score', False):
-            continue
-            
-        # Добавляем оценку если она есть и это число
-        if evaluation is not None and isinstance(evaluation, (int, float)):
-            scores.append(float(evaluation))
-    
-    # Округляем до десятых (1 знак после запятой)
-    average = sum(scores) / len(scores) if scores else 0.0
-    return round(average, 1)
-
-
-def calculate_evaluation(data: Dict, criteria: List[Dict], include_in_score_only: bool = True, include_in_entity_description: bool = False) -> float:
-    """
-    Вычисляет среднее арифметическое оценок по критериям
-    
-    :param data: Данные с оценками критериев
-    :param criteria: Список критериев с настройками
-    :param include_in_score_only: Учитывать только критерии с include_in_score=True
-    :param include_in_entity_description: Дополнительно учитывать include_in_entity_description=True
-    :return: Среднее арифметическое оценок
-    """
-    if not data or not criteria:
-        return 0.0
-    
-    scores = []
-    criteria_dict = {str(c['id']): c for c in criteria}
-    
-    for criterion_id, criterion_data in data.items():
-        if not isinstance(criterion_data, dict):
-            continue
-            
-        criterion_info = criteria_dict.get(str(criterion_id))
-        if not criterion_info:
-            continue
-            
-        # Проверяем условия включения в расчет
-        if include_in_score_only and not criterion_info.get('include_in_score', False):
-            continue
-            
-        if include_in_entity_description and not criterion_info.get('include_in_entity_description', False):
-            continue
-            
-        score = criterion_data.get('score')
-        if score is not None and isinstance(score, (int, float)):
-            scores.append(float(score))
-    
-    # Округляем до десятых (1 знак после запятой)
-    average = sum(scores) / len(scores) if scores else 0.0
-    return round(average, 1)
-
-
-def analyze_existing_worksheet(worksheet) -> Dict:
-    """
-    Анализирует существующий лист и возвращает информацию о нем
-    
-    :param worksheet: Объект Worksheet
-    :return: Словарь с информацией о листе
-    """
-    if worksheet.row_count == 0:
-        return {
-            'existing_headers': [],
-            'existing_records': [],
-            'existing_record_ids': set(),
-            'total_rows': 0
-        }
-    
-    # Получаем заголовки (первая строка)
-    existing_headers = worksheet.row_values(1) if worksheet.row_count > 0 else []
-    
-    # Получаем все существующие данные (кроме заголовков)
-    existing_records = []
-    existing_record_ids = set()
-    
-    if worksheet.row_count > 1:
-        all_values = worksheet.get_all_values()
-        
-        # Пропускаем заголовки (первая строка)
-        for row in all_values[1:]:
-            if row and len(row) > 0:  # Проверяем что строка не пустая
-                existing_records.append(row)
-                # ID обычно в первой колонке
-                if row[0]:  # Если есть ID
-                    existing_record_ids.add(row[0])
-    
-    return {
-        'existing_headers': existing_headers,
-        'existing_records': existing_records,
-        'existing_record_ids': existing_record_ids,
-        'total_rows': len(existing_records)
-    }
-
-
-def normalize_headers_for_comparison(headers: List[str], criteria: List[Dict]) -> List[str]:
-    """
-    Нормализует заголовки для корректного сравнения.
-    Преобразует _text/_eval колонки объединенных критериев в единые имена.
-    
-    :param headers: Исходные заголовки
-    :param criteria: Список критериев для анализа
-    :return: Нормализованные заголовки
-    """
-    normalized = []
-    base_headers = ['id', 'date', 'phone_number', 'manager', 'entity_name', 'category', 'evaluation', 'dialogue', 'summary']
-    
-    # Создаем карту объединенных критериев
-    merged_criteria = {}
-    for criterion in criteria:
-        show_text = criterion.get('show_text_description', False)
-        show_evaluation = criterion.get('evaluate_criterion', False)
-        if show_text and show_evaluation:
-            criterion_name = criterion['name']
-            merged_criteria[f"{criterion_name}_text"] = criterion_name
-            merged_criteria[f"{criterion_name}_eval"] = criterion_name
-    
-    i = 0
-    while i < len(headers):
-        header = headers[i].strip()
-        
-        if header in base_headers:
-            # Базовый заголовок - добавляем как есть
-            normalized.append(header)
-            i += 1
-        elif header in merged_criteria:
-            # Это _text или _eval от объединенного критерия
-            criterion_name = merged_criteria[header]
-            
-            # Проверяем, есть ли парная колонка
-            text_header = f"{criterion_name}_text"
-            eval_header = f"{criterion_name}_eval"
-            
-            if (i + 1 < len(headers) and 
-                headers[i + 1].strip() in merged_criteria and 
-                merged_criteria[headers[i + 1].strip()] == criterion_name):
-                # Есть парная колонка - объединяем в одно название
-                if header not in normalized:  # Избегаем дубликатов
-                    normalized.append(criterion_name)
-                i += 2  # Пропускаем обе колонки
-            else:
-                # Нет парной колонки - добавляем как есть
-                normalized.append(header)
-                i += 1
-        else:
-            # Обычный заголовок критерия
-            normalized.append(header)
-            i += 1
-    
-    return normalized
-
-
-def add_missing_columns(worksheet, existing_headers: List[str], new_headers: List[str], criteria: List[Dict]):
-    """
-    Добавляет недостающие колонки в конец листа
-    
-    :param worksheet: Объект Worksheet
-    :param existing_headers: Существующие заголовки
-    :param new_headers: Новые заголовки (полный список)
-    :param criteria: Список критериев для нормализации
-    :return: (updated_headers, structure_changed)
-    """
-    # Очищаем заголовки от пустых строк для корректного сравнения
-    clean_existing = [h.strip() for h in existing_headers if h.strip()]
-    clean_new = [h.strip() for h in new_headers if h.strip()]
-    
-    # Нормализуем заголовки для сравнения (объединяем _text/_eval в единые имена)
-    normalized_existing = normalize_headers_for_comparison(clean_existing, criteria)
-    normalized_new = normalize_headers_for_comparison(clean_new, criteria)
-    
-    print(f"📊 СРАВНЕНИЕ ЗАГОЛОВКОВ:")
-    print(f"  Существующие (исходные): {len(clean_existing)}")
-    print(f"  Существующие (нормализованные): {len(normalized_existing)}")
-    print(f"  Новые (исходные): {len(clean_new)}")
-    print(f"  Новые (нормализованные): {len(normalized_new)}")
-    
-    # Сравниваем нормализованные версии
-    if set(normalized_existing) == set(normalized_new):
-        print("✅ Структура заголовков не изменилась (после нормализации)")
-        return clean_existing, False  # Структура НЕ изменилась
-    
-    # Находим недостающие заголовки в нормализованном виде
-    missing_normalized = []
-    for norm_header in normalized_new:
-        if norm_header not in normalized_existing:
-            missing_normalized.append(norm_header)
-    
-    if missing_normalized:
-        print(f"⚠️ Обнаружены различия в структуре:")
-        print(f"  Недостающие (нормализованные): {missing_normalized}")
-        
-        # Находим реальные недостающие заголовки в исходном формате
-        missing_headers = []
-        for header in clean_new:
-            if header not in clean_existing:
-                missing_headers.append(header)
-        
-        if missing_headers:
-            print(f"📥 Добавляю {len(missing_headers)} новых колонок: {missing_headers[:5]}{'...' if len(missing_headers) > 5 else ''}")
-            
-            # Обновляем заголовки
-            updated_headers = clean_existing + missing_headers
-            
-            # Расширяем лист если нужно больше колонок
-            if len(updated_headers) > worksheet.col_count:
-                worksheet.add_cols(len(updated_headers) - worksheet.col_count)
-            
-            # Обновляем первую строку с заголовками
-            worksheet.update(f'1:{len(updated_headers)}', [updated_headers])
-            
-            return updated_headers, True  # Структура изменилась
-        else:
-            print("🔄 Структурные изменения без новых колонок - обновляю порядок")
-            
-            # Расширяем лист если нужно больше колонок
-            if len(clean_new) > worksheet.col_count:
-                worksheet.add_cols(len(clean_new) - worksheet.col_count)
-            
-            # Обновляем заголовки в правильном порядке
-            worksheet.update(f'1:{len(clean_new)}', [clean_new])
-            
-            return clean_new, True  # Структура изменилась (порядок)
-    else:
-        print("✅ Колонки полностью совпадают")
-        return clean_existing, False  # Структура НЕ изменилась
-
-
-def filter_new_records(new_rows: List[List[str]], existing_record_ids: set, headers: List[str]) -> List[List[str]]:
-    """
-    Фильтрует новые записи, исключая уже существующие в листе
-    
-    :param new_rows: Все новые строки
-    :param existing_record_ids: Множество существующих ID записей
-    :param headers: Заголовки для определения позиции ID
-    :return: Список только новых записей
-    """
-    if not new_rows or not headers:
-        return new_rows
-    
-    # ID обычно в первой колонке
-    id_index = 0
-    if 'id' in headers:
-        id_index = headers.index('id')
-    
-    filtered_rows = []
-    
-    for row in new_rows:
-        if len(row) > id_index and row[id_index]:
-            record_id = row[id_index]
-            if record_id not in existing_record_ids:
-                filtered_rows.append(row)
-        else:
-            # Если нет ID, добавляем запись (может быть пустая строка)
-            filtered_rows.append(row)
-    
-    original_count = len(new_rows)
-    filtered_count = len(filtered_rows)
-    duplicate_count = original_count - filtered_count
-    
-    print(f"Фильтрация записей: {original_count} всего, {filtered_count} новых, {duplicate_count} дубликатов")
-    
-    return filtered_rows
-
-
-def insert_new_records_at_bottom(worksheet, new_rows: List[List], existing_headers: List[str], final_headers: List[str]):
-    """
-    Добавляет новые записи в конец листа, сохраняя старые данные
-    Поддерживает формулы через batch API
-    
-    :param worksheet: Объект Worksheet
-    :param new_rows: Новые строки для добавления (могут содержать объекты формул)
-    :param existing_headers: Исходные заголовки листа
-    :param final_headers: Финальные заголовки (с новыми колонками)
-    """
-    if not new_rows:
-        print("Нет новых записей для добавления")
-        return
-    
-    # Адаптируем данные к новому формату заголовков (если добавились новые колонки)
-    adapted_rows = []
-    
-    for row in new_rows:
-        if len(existing_headers) == len(final_headers):
-            # Заголовки не изменились, используем строку как есть
-            adapted_rows.append(row)
-        else:
-            # Заголовки изменились, нужно адаптировать строку
-            adapted_row = [''] * len(final_headers)
-            
-            # Заполняем значения согласно позициям в исходных заголовках
-            for i, value in enumerate(row):
-                if i < len(existing_headers):
-                    header = existing_headers[i]
-                    if header in final_headers:
-                        new_index = final_headers.index(header)
-                        adapted_row[new_index] = value
-            
-            adapted_rows.append(adapted_row)
-    
-    print(f"Добавляю {len(adapted_rows)} новых записей в конец листа")
-    
-    # Проверяем, есть ли формулы в данных
-    has_formulas = any(
-        any(isinstance(cell, dict) and 'formula' in cell for cell in row)
-        for row in adapted_rows
+async def get_google_sheets_client():
+    """Инициализирует и возвращает асинхронный клиент для работы с Google Sheets."""
+    agcm = gspread_asyncio.AsyncioGspreadClientManager(
+        lambda: Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     )
-    
-    if has_formulas:
-        # Используем batch API для записи формул
-        _insert_rows_with_formulas_batch(worksheet, adapted_rows)
-    else:
-        # Используем обычный append_rows для простых данных
-        simple_rows = [[str(cell) for cell in row] for row in adapted_rows]
-        worksheet.append_rows(simple_rows)
-    
-    print(f"✅ Добавлено {len(adapted_rows)} записей")
+    return await agcm.authorize()
 
+def load_portal_configs() -> List[Dict]:
+    """Загружает конфигурации порталов из bitrix24/bitrix_portals.json."""
+    with open('bitrix24/bitrix_portals.json', 'r') as f:
+        data = json.load(f)
+        return data.get('portals', [])
 
-def _insert_rows_with_formulas_batch(worksheet, rows_with_formulas):
+def calculate_evaluation_from_record_data(record_criteria_data: List[Dict], criteria_metadata: List[Dict]) -> float:
     """
-    Вспомогательная функция для вставки строк с формулами через batch API
+    Вычисляет среднюю оценку для записи на основе критериев с evaluate_criterion=True и include_in_score=True.
+    
+    :param record_criteria_data: Данные критериев из записи (data['criteria'])
+    :param criteria_metadata: Метаданные критериев из таблицы criteria
+    :return: Средняя оценка, округленная до десятых
     """
-    # Определяем начальную позицию (после всех существующих данных)
-    # Нужно использовать количество строк с данными, а не row_count листа
-    all_values = worksheet.get_all_values()
-    start_row = len(all_values) + 1
+    evaluations = []
     
-    # Расширяем лист если нужно
-    needed_rows = start_row + len(rows_with_formulas)
-    if needed_rows > worksheet.row_count:
-        worksheet.add_rows(needed_rows - worksheet.row_count)
+    # Создаем словарь метаданных критериев по ID
+    criteria_meta_dict = {c['id']: c for c in criteria_metadata}
     
-    # Подготавливаем batch-запрос
-    requests = []
-    
-    for row_idx, row in enumerate(rows_with_formulas):
-        current_row = start_row + row_idx
+    for record_criterion in record_criteria_data:
+        criterion_id = record_criterion.get('id')
+        criterion_meta = criteria_meta_dict.get(criterion_id, {})
         
-        for col_idx, cell_value in enumerate(row):
-            if isinstance(cell_value, dict) and 'formula' in cell_value:
-                # Это формула - используем formulaValue
-                requests.append({
-                    "updateCells": {
-                        "range": {
-                            "sheetId": worksheet.id,
-                            "startRowIndex": current_row - 1,  # 0-based
-                            "endRowIndex": current_row,
-                            "startColumnIndex": col_idx,
-                            "endColumnIndex": col_idx + 1
-                        },
-                        "rows": [{
-                            "values": [{
-                                "userEnteredValue": {"formulaValue": cell_value['formula']}
-                            }]
-                        }],
-                        "fields": "userEnteredValue"
-                    }
-                })
-            elif str(cell_value):  # Только если значение не пустое
-                # Обычное значение - используем stringValue
-                requests.append({
-                    "updateCells": {
-                        "range": {
-                            "sheetId": worksheet.id,
-                            "startRowIndex": current_row - 1,  # 0-based
-                            "endRowIndex": current_row,
-                            "startColumnIndex": col_idx,
-                            "endColumnIndex": col_idx + 1
-                        },
-                        "rows": [{
-                            "values": [{
-                                "userEnteredValue": {"stringValue": str(cell_value)}
-                            }]
-                        }],
-                        "fields": "userEnteredValue"
-                    }
-                })
-    
-    # Выполняем batch-запрос
-    if requests:
-        spreadsheet = worksheet.spreadsheet
-        # Разбиваем на чанки по 100 запросов (лимит API)
-        chunk_size = 100
-        for i in range(0, len(requests), chunk_size):
-            chunk = requests[i:i + chunk_size]
-            spreadsheet.batch_update({"requests": chunk})
-        
-        print(f"✅ Записано {len(requests)} ячеек через batch API")
-
-
-def fix_hyperlink_formulas(worksheet, headers: List[str], start_row: int, num_rows: int):
-    """
-    Исправляет формулы гиперссылок в колонке entity_name, убирая апострофы
-    
-    :param worksheet: Объект Worksheet
-    :param headers: Список заголовков для определения позиции entity_name
-    :param start_row: Начальная строка (1-based)
-    :param num_rows: Количество строк для обработки
-    """
-    try:
-        entity_name_index = headers.index('entity_name')
-    except ValueError:
-        print("Колонка entity_name не найдена, пропускаю исправление формул")
-        return
-    
-    print(f"🔧 Исправляю формулы гиперссылок в колонке entity_name (столбец {entity_name_index + 1})")
-    
-    # Получаем все значения в колонке entity_name
-    col_letter = chr(ord('A') + entity_name_index)  # Конвертируем индекс в букву колонки
-    range_name = f"{col_letter}{start_row}:{col_letter}{start_row + num_rows - 1}"
-    
-    try:
-        values = worksheet.get(range_name)
-        if not values:
-            print("Нет данных для исправления")
-            return
+        # Проверяем условия из метаданных критерия
+        if (criterion_meta.get('evaluate_criterion', False) and 
+            criterion_meta.get('include_in_score', False)):
             
-        # Подготавливаем batch-запрос для исправления формул
-        requests = []
-        
-        for i, row in enumerate(values):
-            if row and len(row) > 0:
-                cell_value = row[0]
-                # Проверяем, является ли значение формулой HYPERLINK
-                if isinstance(cell_value, str) and 'HYPERLINK' in cell_value:
-                    # Убираем апостроф, если он есть в начале
-                    clean_formula = cell_value.lstrip("'")
-                    
-                    if clean_formula != cell_value:  # Если было изменение
-                        row_num = start_row + i
-                        
-                        requests.append({
-                            "updateCells": {
-                                "range": {
-                                    "sheetId": worksheet.id,
-                                    "startRowIndex": row_num - 1,  # 0-based
-                                    "endRowIndex": row_num,
-                                    "startColumnIndex": entity_name_index,
-                                    "endColumnIndex": entity_name_index + 1
-                                },
-                                "rows": [{
-                                    "values": [{
-                                        "userEnteredValue": {"formulaValue": clean_formula}
-                                    }]
-                                }],
-                                "fields": "userEnteredValue"
-                            }
-                        })
-        
-        # Выполняем batch-запрос
-        if requests:
-            spreadsheet = worksheet.spreadsheet
-            spreadsheet.batch_update({"requests": requests})
-            print(f"✅ Исправлено {len(requests)} формул гиперссылок")
-        else:
-            print("Нет формул для исправления")
-            
-    except Exception as e:
-        print(f"❌ Ошибка при исправлении формул: {e}")
-
-
-def apply_all_formatting_batch(worksheet, headers: List[str], criterion_headers_info: List[Dict], total_rows: int, need_formatting: bool = True):
-    """
-    Применяет все форматирование одним batch-запросом: ширина колонок, объединение ячеек, стили
+            eval_value = record_criterion.get('evaluation')
+            if isinstance(eval_value, (int, float)):
+                evaluations.append(eval_value)
     
-    :param worksheet: Объект Worksheet
-    :param headers: Список заголовков
-    :param criterion_headers_info: Информация о критериях для объединения
-    :param total_rows: Общее количество строк для форматирования
-    :param need_formatting: Нужно ли применять форматирование (только если структура изменилась)
-    """
-    if not need_formatting:
-        print("📋 Структура листа не изменилась, пропускаю форматирование")
-        return
-    
-    print("🎨 Применяю все форматирование одним batch-запросом")
-    
-    try:
-        # Стандартные ширины колонок
-        NARROW_WIDTH = 80   # Для оценок (цифры)
-        MEDIUM_WIDTH = 150  # Для базовых полей
-        WIDE_WIDTH = 250    # Для текстовых описаний
-        
-        # Функция для получения буквы колонки
-        def get_column_letter(col_num):
-            if col_num <= 26:
-                return chr(64 + col_num)
-            else:
-                first_letter = chr(64 + ((col_num - 1) // 26))
-                second_letter = chr(64 + ((col_num - 1) % 26) + 1)
-                return first_letter + second_letter
-        
-        # 1. Обновляем заголовки с учетом объединений
-        updated_headers = headers.copy()
-        
-        for info in criterion_headers_info:
-            if info['type'] == 'merged':
-                start_col = info['start_col']
-                end_col = info['end_col']
-                criterion_name = info['name']
-                
-                updated_headers[start_col] = criterion_name  # Первая колонка - название критерия
-                updated_headers[end_col] = ''  # Вторая колонка - пустая для объединения
-        
-        # Обновляем заголовки
-        worksheet.update('1:1', [updated_headers])
-        print(f"📝 Обновлены заголовки: {len(updated_headers)} колонок")
-        
-        # 2. Подготавливаем batch-запрос
-        requests = []
-        
-        # 2.1 Устанавливаем ширину колонок
-        for i, header in enumerate(headers):
-            # Определяем ширину колонки
-            if header in ['id', 'date', 'phone_number', 'evaluation', 'manager', 'entity_name', 'category']:
-                width = MEDIUM_WIDTH
-            elif header == 'dialogue':
-                width = WIDE_WIDTH * 2  # Очень широко для диалога (500px)
-            elif header == 'summary':
-                width = WIDE_WIDTH  # Широко для краткого резюме
-            elif header.endswith('_eval') or header == '':
-                width = NARROW_WIDTH
-            elif header.endswith('_text') or any(info['type'] == 'single' and info['col'] == i for info in criterion_headers_info):
-                width = WIDE_WIDTH
-            else:
-                # Проверяем в criterion_headers_info для объединенных колонок
-                is_text_col = any(info['type'] == 'merged' and info['start_col'] == i for info in criterion_headers_info)
-                is_eval_col = any(info['type'] == 'merged' and info['end_col'] == i for info in criterion_headers_info)
-                
-                if is_eval_col:
-                    width = NARROW_WIDTH
-                elif is_text_col:
-                    width = WIDE_WIDTH
-                else:
-                    width = MEDIUM_WIDTH
-            
-            # Добавляем запрос на установку ширины колонки
-            requests.append({
-                "updateDimensionProperties": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "dimension": "COLUMNS",
-                        "startIndex": i,
-                        "endIndex": i + 1
-                    },
-                    "properties": {
-                        "pixelSize": width
-                    },
-                    "fields": "pixelSize"
-                }
-            })
-        
-        # 2.2 Объединяем ячейки для критериев
-        for info in criterion_headers_info:
-            if info['type'] == 'merged':
-                start_col = info['start_col']
-                end_col = info['end_col']
-                
-                requests.append({
-                    "mergeCells": {
-                        "range": {
-                            "sheetId": worksheet.id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1,
-                            "startColumnIndex": start_col,
-                            "endColumnIndex": end_col + 1
-                        },
-                        "mergeType": "MERGE_ALL"
-                    }
-                })
-        
-        # 2.3 Форматирование всех ячеек
-        end_col_letter = get_column_letter(len(headers))
-        
-        # Форматирование данных
-        requests.append({
-            "repeatCell": {
-                "range": {
-                    "sheetId": worksheet.id,
-                    "startRowIndex": 0,
-                    "endRowIndex": total_rows + 1,
-                    "startColumnIndex": 0,
-                    "endColumnIndex": len(headers)
-                },
-                "cell": {
-                    "userEnteredFormat": {
-                        "wrapStrategy": "WRAP",
-                        "verticalAlignment": "TOP",
-                        "textFormat": {
-                            "fontSize": 10
-                        }
-                    }
-                },
-                "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
-            }
-        })
-        
-        # Форматирование заголовков
-        requests.append({
-            "repeatCell": {
-                "range": {
-                    "sheetId": worksheet.id,
-                    "startRowIndex": 0,
-                    "endRowIndex": 1,
-                    "startColumnIndex": 0,
-                    "endColumnIndex": len(headers)
-                },
-                "cell": {
-                    "userEnteredFormat": {
-                        "backgroundColor": {
-                            "red": 0.9,
-                            "green": 0.9,
-                            "blue": 0.9
-                        },
-                        "textFormat": {
-                            "bold": True,
-                            "fontSize": 10
-                        },
-                        "horizontalAlignment": "CENTER"
-                    }
-                },
-                "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
-            }
-        })
-        
-        # Специальное форматирование для колонок dialogue и summary (без переноса по словам)
-        dialogue_col_index = None
-        summary_col_index = None
-        try:
-            dialogue_col_index = headers.index('dialogue')
-        except ValueError:
-            pass
-        try:
-            summary_col_index = headers.index('summary')
-        except ValueError:
-            pass
-        
-        # Форматирование для dialogue
-        if dialogue_col_index is not None:
-            requests.append({
-                "repeatCell": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 1,  # Пропускаем заголовки
-                        "endRowIndex": total_rows + 1,
-                        "startColumnIndex": dialogue_col_index,
-                        "endColumnIndex": dialogue_col_index + 1
-                    },
-                    "cell": {
-                        "userEnteredFormat": {
-                            "wrapStrategy": "CLIP",  # НЕ переносить по словам
-                            "verticalAlignment": "TOP",
-                            "textFormat": {
-                                "fontSize": 10
-                            }
-                        }
-                    },
-                    "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
-                }
-            })
-        
-        # Форматирование для summary
-        if summary_col_index is not None:
-            requests.append({
-                "repeatCell": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 1,  # Пропускаем заголовки
-                        "endRowIndex": total_rows + 1,
-                        "startColumnIndex": summary_col_index,
-                        "endColumnIndex": summary_col_index + 1
-                    },
-                    "cell": {
-                        "userEnteredFormat": {
-                            "wrapStrategy": "WRAP",  # Переносить по словам
-                            "verticalAlignment": "TOP",
-                            "textFormat": {
-                                "fontSize": 10
-                            }
-                        }
-                    },
-                    "fields": "userEnteredFormat(wrapStrategy,verticalAlignment,textFormat.fontSize)"
-                }
-            })
-        
-        # 2.4 Закрепляем первую строку (заголовки)
-        requests.append({
-            "updateSheetProperties": {
-                "properties": {
-                    "sheetId": worksheet.id,
-                    "gridProperties": {
-                        "frozenRowCount": 1  # Закрепляем первую строку
-                    }
-                },
-                "fields": "gridProperties.frozenRowCount"
-            }
-        })
-        
-        # 2.5 Добавляем автофильтры
-        requests.append({
-            "setBasicFilter": {
-                "filter": {
-                    "range": {
-                        "sheetId": worksheet.id,
-                        "startRowIndex": 0,
-                        "endRowIndex": total_rows + 1,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": len(headers)
-                    }
-                }
-            }
-        })
-        
-        # 3. Выполняем batch-запрос
-        spreadsheet = worksheet.spreadsheet
-        spreadsheet.batch_update({"requests": requests})
-        
-        print(f"✅ Batch-форматирование применено:")
-        print(f"  📏 Ширина: {len(headers)} колонок")
-        print(f"  🔗 Объединений: {len([info for info in criterion_headers_info if info['type'] == 'merged'])}")
-        print(f"  🎨 Диапазон: A1:{end_col_letter}{total_rows + 1}")
-        print(f"  📌 Закреплена первая строка (заголовки)")
-        print(f"  🔍 Добавлены автофильтры")
-        
-    except Exception as e:
-        print(f"❌ Ошибка batch-форматирования: {e}")
-        # Fallback: основные настройки
-        try:
-            worksheet.columns_auto_resize(0, len(headers) - 1)
-            print("  🔄 Применен fallback: автоматический размер колонок")
-        except Exception as fallback_e:
-            print(f"  ❌ Ошибка fallback: {fallback_e}")
+    return round(sum(evaluations) / len(evaluations), 1) if evaluations else 0.0
 
-
-def get_or_create_worksheet(spreadsheet, sheet_name: str, headers: List[str]):
-    """
-    Получает существующий лист или создает новый с заголовками
-    
-    :param spreadsheet: Объект Google Spreadsheet
-    :param sheet_name: Название листа
-    :param headers: Список заголовков колонок
-    :return: (Объект Worksheet, is_new_sheet)
-    """
-    try:
-        worksheet = spreadsheet.worksheet(sheet_name)
-        print(f"Лист '{sheet_name}' найден")
-        return worksheet, False  # Существующий лист
-        
-    except gspread.WorksheetNotFound:
-        print(f"Создаю новый лист '{sheet_name}'")
-        worksheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=len(headers))
-        worksheet.append_row(headers)
-        return worksheet, True  # Новый лист
-
-
-def prepare_records_data(portal_name: str, portal_data: Dict, criteria: List[Dict], entities_sheet_id: int = None) -> tuple:
-    """
-    Подготавливает данные записей для загрузки в Google Sheets
-    
-    :param portal_name: Название портала
-    :param portal_data: Данные портала (records, entities, users, etc.)
-    :param criteria: Список критериев
-    :param entities_sheet_id: ID листа "Сущности" для создания гиперссылок
-    :return: Кортеж (заголовки, строки данных, информация об объединении критериев)
-    """
+def prepare_records_data(portal_data: Dict) -> Tuple[List[str], List[List]]:
+    """Подготавливает данные записей для загрузки в Google Sheets."""
     records = portal_data.get('records', [])
-    entities = portal_data.get('entities', [])
     users = portal_data.get('users', [])
-    
+    entities = portal_data.get('entities', [])
+    criteria = portal_data.get('criteria', [])
+
     if not records:
-        return [], [], []
-    
+        return [], []
+
     # Создаем словари для быстрого поиска
-    entities_dict = {e['id']: e for e in entities}
     users_dict = {u['id']: u for u in users}
-    criteria_dict = {c['id']: c for c in criteria}
-    
+    entities_dict = {e['id']: e for e in entities}
+
     # Базовые заголовки
     headers = ['id', 'date', 'phone_number', 'manager', 'entity_name', 'category', 'evaluation', 'dialogue', 'summary']
-    
+
     # Добавляем заголовки для критериев
-    criterion_headers_info = []  # Для отслеживания объединений
-    
     for criterion in criteria:
-        show_text = criterion.get('show_text_description', False)
-        show_evaluation = criterion.get('evaluate_criterion', False)
         criterion_name = criterion['name']
-        
-        if show_text and show_evaluation:
-            # И текст И оценка - добавляем 2 колонки, потом объединим заголовок
-            headers.append(f"{criterion_name}_text")  # Временное имя для текста
-            headers.append(f"{criterion_name}_eval")  # Временное имя для оценки
-            criterion_headers_info.append({
-                'type': 'merged',
-                'name': criterion_name,
-                'start_col': len(headers) - 2,  # Индекс первой колонки
-                'end_col': len(headers) - 1     # Индекс второй колонки
-            })
-        elif show_text:
-            # Только текст
-            headers.append(criterion_name)
-            criterion_headers_info.append({
-                'type': 'single',
-                'name': criterion_name,
-                'col': len(headers) - 1
-            })
-        elif show_evaluation:
-            # Только оценка
-            headers.append(criterion_name)
-            criterion_headers_info.append({
-                'type': 'single', 
-                'name': criterion_name,
-                'col': len(headers) - 1
-            })
-    
-    # Сортируем записи по дате в возрастающем порядке (самые новые внизу)
+        headers.append(criterion_name)  # Колонка с названием критерия
+        if criterion.get('evaluate_criterion', False):
+            headers.append('')  # Пустой заголовок для колонки оценки
+
+    # Сортируем записи по дате (самые новые внизу)
     sorted_records = sorted(records, key=lambda x: x.get('date', ''), reverse=False)
-    
+
     # Подготавливаем строки данных
     rows = []
     for record in sorted_records:
-        row_data = {}
+        row = []
         
         # Базовые поля
-        row_data['id'] = record.get('id', '')
-        row_data['date'] = record.get('date', '')
-        row_data['phone_number'] = record.get('phone_number', '')
+        row.append(record.get('id', ''))
+        row.append(record.get('date', ''))
+        row.append(record.get('phone_number', ''))
         
         # Менеджер из пользователя по user_id
         user_id = record.get('user_id')
         manager_name = ''
-        
         if user_id and user_id in users_dict:
             user = users_dict[user_id]
             name = user.get('name', '') or ''
             last_name = user.get('last_name', '') or ''
             manager_name = f"{name} {last_name}".strip()
+        row.append(manager_name)
         
-        row_data['manager'] = manager_name
-        
-        # Имя сущности из связанной entity с гиперссылкой
+        # Имя сущности (title + name + lastname)
         entity_id = record.get('entity_id')
-        entity_name_with_link = ''
-        
+        entity_name = ''
         if entity_id and entity_id in entities_dict:
             entity = entities_dict[entity_id]
-            # Формируем имя сущности
             title = entity.get('title', '') or ''
             name = entity.get('name', '') or ''
             lastname = entity.get('lastname', '') or ''
             name_parts = [part for part in [title, name, lastname] if part and part != 'None']
-            entity_full_name = ' '.join(name_parts) if name_parts else f'Сущность {entity_id}'
-            
-            # Создаем формулу гиперссылки на лист "Сущности"
-            if entities_sheet_id is not None:
-                # Находим позицию сущности в отсортированном списке для правильного номера строки
-                sorted_entities = sorted(entities, key=lambda x: x.get('id', 0), reverse=False)
-                entity_row = None
-                for idx, ent in enumerate(sorted_entities):
-                    if ent.get('id') == entity_id:
-                        entity_row = idx + 2  # +2 потому что: +1 для заголовков, +1 для 1-based индексации
-                        break
-                
-                if entity_row:
-                    # Создаем специальный объект для формулы вместо строки
-                    entity_name_with_link = {
-                        'formula': f'=HYPERLINK("#gid={entities_sheet_id}&range=A{entity_row}"; "{entity_full_name}")',
-                        'display_text': entity_full_name
-                    }
-                else:
-                    entity_name_with_link = entity_full_name  # Fallback без ссылки
-            else:
-                entity_name_with_link = entity_full_name  # Если нет ID листа, показываем просто имя
-        
-        row_data['entity_name'] = entity_name_with_link
+            entity_name = ' '.join(name_parts) if name_parts else f'Сущность {entity_id}'
+        row.append(entity_name)
         
         # Категория из data['categories']
         data = record.get('data', {})
         categories_list = data.get('categories', [])
         category_name = categories_list[0].get('name', '') if categories_list else ''
-        row_data['category'] = category_name
+        row.append(category_name)
         
-        # Вычисляем evaluation из data['criteria']
+        # Вычисляем evaluation
         record_criteria_list = data.get('criteria', [])
-        row_data['evaluation'] = calculate_evaluation_from_record_data(record_criteria_list, criteria)
+        evaluation = calculate_evaluation_from_record_data(record_criteria_list, criteria)
+        row.append(evaluation)
         
-        # Добавляем полный текст диалога
-        dialogue_text = record.get('dialogue', '') or ''
-        row_data['dialogue'] = dialogue_text
+        # Текст диалога
+        row.append(record.get('dialogue', '') or '')
         
-        # Добавляем краткое резюме диалога
-        summary_text = record.get('summary', '') or ''
-        row_data['summary'] = summary_text
+        # Краткое резюме
+        row.append(record.get('summary', '') or '')
         
-        # Добавляем данные по критериям из data['criteria']
-        record_criteria_list = data.get('criteria', [])
-        
-        # Создаем словарь критериев из записи по ID для быстрого поиска
+        # Добавляем данные по критериям
         record_criteria_dict = {rc.get('id'): rc for rc in record_criteria_list}
         
         for criterion in criteria:
             criterion_id = criterion['id']
-            criterion_name = criterion['name']
-            show_text = criterion.get('show_text_description', False)
-            show_evaluation = criterion.get('evaluate_criterion', False)
-            
-            # Находим данные этого критерия в записи
             record_criterion_data = record_criteria_dict.get(criterion_id, {})
             
-            if show_text and show_evaluation:
-                # И текст И оценка - заполняем обе временные колонки
-                text_value = record_criterion_data.get('text', '')
-                evaluation_value = record_criterion_data.get('evaluation', '')
-                
-                row_data[f"{criterion_name}_text"] = text_value
-                row_data[f"{criterion_name}_eval"] = evaluation_value if evaluation_value is not None else ''
-                
-            elif show_text:
-                # Только текст
-                text_value = record_criterion_data.get('text', '')
-                row_data[criterion_name] = text_value
-                
-            elif show_evaluation:
-                # Только оценка
-                evaluation_value = record_criterion_data.get('evaluation', '')
-                row_data[criterion_name] = evaluation_value if evaluation_value is not None else ''
-        
-        # Преобразуем в список значений согласно порядку заголовков
-        row_values = []
-        for header in headers:
-            value = row_data.get(header, '')
-            # Если это объект формулы, сохраняем как есть для последующей обработки
-            if isinstance(value, dict) and 'formula' in value:
-                row_values.append(value)
-            else:
-                row_values.append(str(value))
-        rows.append(row_values)
-    
-    return headers, rows, criterion_headers_info
-
-
-def prepare_entities_data(portal_name: str, portal_data: Dict, criteria: List[Dict]) -> tuple:
-    """
-    Подготавливает данные сущностей для загрузки в Google Sheets
-    
-    :param portal_name: Название портала
-    :param portal_data: Данные портала (records, entities, users, etc.)
-    :param criteria: Список критериев
-    :return: Кортеж (заголовки, строки данных, информация об объединении критериев)
-    """
-    entities = portal_data.get('entities', [])
-    
-    if not entities:
-        return [], [], []
-    
-    # Базовые заголовки
-    headers = ['id', 'crm_entity_type', 'name', 'evaluation', 'summary']
-    
-    # Добавляем заголовки для критериев (только те, что включены в описание сущности)
-    criterion_headers_info = []  # Для отслеживания объединений
-    
-    for criterion in criteria:
-        if criterion.get('include_in_entity_description', False):
-            show_text = criterion.get('show_text_description', False)
-            show_evaluation = criterion.get('evaluate_criterion', False)
-            criterion_name = criterion['name']
+            # Текст критерия (если показывать)
+            text_value = record_criterion_data.get('text', '') if criterion.get('show_text_description', False) else ''
+            row.append(text_value)
             
-            if show_text and show_evaluation:
-                # И текст И оценка - добавляем 2 колонки, потом объединим заголовок
-                headers.append(f"{criterion_name}_text")  # Временное имя для текста
-                headers.append(f"{criterion_name}_eval")  # Временное имя для оценки
-                criterion_headers_info.append({
-                    'type': 'merged',
-                    'name': criterion_name,
-                    'start_col': len(headers) - 2,  # Индекс первой колонки
-                    'end_col': len(headers) - 1     # Индекс второй колонки
-                })
-            elif show_text:
-                # Только текст
-                headers.append(criterion_name)
-                criterion_headers_info.append({
-                    'type': 'single',
-                    'name': criterion_name,
-                    'col': len(headers) - 1
-                })
-            elif show_evaluation:
-                # Только оценка
-                headers.append(criterion_name)
-                criterion_headers_info.append({
-                    'type': 'single', 
-                    'name': criterion_name,
-                    'col': len(headers) - 1
-                })
+            # Оценка критерия (если есть)
+            if criterion.get('evaluate_criterion', False):
+                eval_value = record_criterion_data.get('evaluation', '')
+                row.append(eval_value if eval_value is not None else '')
+        
+        rows.append(row)
+
+    return headers, rows
+
+async def get_or_create_worksheet(spreadsheet, sheet_name: str):
+    """Получает или создает лист с указанным именем."""
+    try:
+        worksheet = await spreadsheet.worksheet(sheet_name)
+        print(f"📄 Лист '{sheet_name}' найден")
+        return worksheet
+    except gspread.exceptions.WorksheetNotFound:
+        worksheet = await spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=50)
+        print(f"📄 Лист '{sheet_name}' создан")
+        return worksheet
+
+async def analyze_existing_worksheet(worksheet) -> Dict:
+    """Анализирует существующий лист на наличие данных и заголовков."""
+    all_values = await worksheet.get_all_values()
+    if not all_values:
+        return {'is_empty': True, 'existing_headers': [], 'existing_data': []}
+
+    existing_headers = all_values[0] if all_values else []
+    existing_data = all_values[1:] if len(all_values) > 1 else []
     
-    # Сортируем сущности по ID в возрастающем порядке (новые внизу)
-    sorted_entities = sorted(entities, key=lambda x: x.get('id', 0), reverse=False)
-    
-    # Подготавливаем строки данных
-    rows = []
-    for entity in sorted_entities:
-        row_data = {}
-        
-        # Базовые поля
-        row_data['id'] = entity.get('id', '')
-        row_data['crm_entity_type'] = entity.get('crm_entity_type', '')
-        
-        # Объединяем title, name, lastname в одно поле name
-        title = entity.get('title', '') or ''
-        name = entity.get('name', '') or ''
-        lastname = entity.get('lastname', '') or ''
-        
-        # Убираем None и пустые строки
-        name_parts = [part for part in [title, name, lastname] if part and part != 'None']
-        full_name = ' '.join(name_parts) if name_parts else 'Без имени'
-        row_data['name'] = full_name
-        
-        # Вычисляем evaluation для сущности
-        data = entity.get('data', {})
-        entity_criteria_list = data.get('criteria', [])
-        
-        # Преобразуем список критериев сущности в словарь для совместимости с calculate_evaluation
-        if isinstance(entity_criteria_list, list):
-            entity_criteria_dict = {}
-            for ec in entity_criteria_list:
-                if ec.get('id') and ec.get('evaluation') is not None:
-                    entity_criteria_dict[str(ec['id'])] = {'score': ec['evaluation']}
+    return {
+        'is_empty': len(existing_data) == 0,
+        'existing_headers': existing_headers,
+        'existing_data': existing_data
+    }
+
+def filter_new_records(new_rows: List[List], existing_data: List[List]) -> List[List]:
+    """Фильтрует новые записи, исключая те, которые уже есть в таблице (по ID)."""
+    if not existing_data:
+        return new_rows
+
+    existing_ids = {row[0] for row in existing_data if row and len(row) > 0}
+    filtered_rows = []
+
+    for row in new_rows:
+        record_id = row[0] if row else None
+        if record_id and record_id in existing_ids:
+            continue
         else:
-            entity_criteria_dict = {}
-        
-        row_data['evaluation'] = calculate_evaluation(
-            entity_criteria_dict, criteria, 
-            include_in_score_only=True, 
-            include_in_entity_description=True
-        )
-        
-        # Добавляем краткое резюме сущности
-        summary_text = entity.get('summary', '') or ''
-        row_data['summary'] = summary_text
-        
-        # Добавляем данные по критериям (только те, что включены в описание сущности)
-        # В сущностях criteria хранится как список, а не словарь
-        entity_criteria_list = data.get('criteria', [])
-        entity_criteria_dict = {ec.get('id'): ec for ec in entity_criteria_list} if isinstance(entity_criteria_list, list) else {}
-        
-        for criterion in criteria:
-            if not criterion.get('include_in_entity_description', False):
-                continue
-                
-            criterion_id = criterion['id']
-            criterion_name = criterion['name']
-            show_text = criterion.get('show_text_description', False)
-            show_evaluation = criterion.get('evaluate_criterion', False)
-            
-            # Находим данные этого критерия в сущности
-            entity_criterion_data = entity_criteria_dict.get(criterion_id, {})
-            
-            if show_text and show_evaluation:
-                # И текст И оценка - заполняем обе временные колонки
-                text_value = entity_criterion_data.get('text', '')
-                eval_value = entity_criterion_data.get('evaluation', '')
-                
-                row_data[f"{criterion_name}_text"] = text_value
-                row_data[f"{criterion_name}_eval"] = eval_value if eval_value is not None else ''
-                
-            elif show_text:
-                # Только текст
-                text_value = entity_criterion_data.get('text', '')
-                row_data[criterion_name] = text_value
-                
-            elif show_evaluation:
-                # Только оценка
-                eval_value = entity_criterion_data.get('evaluation', '')
-                row_data[criterion_name] = eval_value if eval_value is not None else ''
-        
-        # Преобразуем в список значений согласно порядку заголовков
-        row_values = [str(row_data.get(header, '')) for header in headers]
-        rows.append(row_values)
-    
-    return headers, rows, criterion_headers_info
+            filtered_rows.append(row)
 
+    original_count = len(new_rows)
+    filtered_count = len(filtered_rows)
+    duplicate_count = original_count - filtered_count
+    
+    print(f"🔍 Фильтрация записей: {original_count} всего, {filtered_count} новых, {duplicate_count} дубликатов")
+    return filtered_rows
 
-async def upload_to_google_sheets(data: Dict):
-    """
-    Основная функция загрузки данных в Google Sheets
+async def apply_header_and_formatting(worksheet, headers: List[str], spreadsheet):
+    """Применяет заголовки и форматирование к листу."""
     
-    :param data: Данные из load_records_entities_and_users
-    """
-    print("Начинаю загрузку данных в Google Sheets")
+    # Обновляем заголовки
+    await worksheet.update('1:1', [headers])
     
-    # Загружаем настройки и учетные данные
-    portal_settings = load_portal_settings()
-    gc = load_google_credentials()
+    # Подготавливаем batch-запрос для форматирования
+    requests = []
     
-    for portal_name, portal_data in data.items():
-        print(f"\nОбрабатываю портал: {portal_name}")
+    # 1. Форматирование шапки (жирный шрифт, заливка #e5e5e5)
+    requests.append({
+        "repeatCell": {
+            "range": {
+                "sheetId": worksheet.id,
+                "startRowIndex": 0,
+                "endRowIndex": 1,
+                "startColumnIndex": 0,
+                "endColumnIndex": len(headers)
+            },
+            "cell": {
+                "userEnteredFormat": {
+                    "backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9},
+                    "textFormat": {"bold": True}
+                }
+            },
+            "fields": "userEnteredFormat(backgroundColor,textFormat)"
+        }
+    })
+    
+    # 2. Закрепление первой строки
+    requests.append({
+        "updateSheetProperties": {
+            "properties": {
+                "sheetId": worksheet.id,
+                "gridProperties": {
+                    "frozenRowCount": 1
+                }
+            },
+            "fields": "gridProperties.frozenRowCount"
+        }
+    })
+    
+    # 3. Установка автофильтра
+    requests.append({
+        "setBasicFilter": {
+            "filter": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1000,  # Достаточно большой диапазон
+                    "startColumnIndex": 0,
+                    "endColumnIndex": len(headers)
+                }
+            }
+        }
+    })
+    
+    # 4. Выравнивание по левому краю, верхнему краю и перенос по строкам для всей таблицы
+    requests.append({
+        "repeatCell": {
+            "range": {
+                "sheetId": worksheet.id,
+                "startRowIndex": 0,
+                "endRowIndex": 1000,  # Достаточно большой диапазон
+                "startColumnIndex": 0,
+                "endColumnIndex": len(headers)
+            },
+            "cell": {
+                "userEnteredFormat": {
+                    "horizontalAlignment": "LEFT",
+                    "verticalAlignment": "TOP",
+                    "wrapStrategy": "WRAP"
+                }
+            },
+            "fields": "userEnteredFormat(horizontalAlignment,verticalAlignment,wrapStrategy)"
+        }
+    })
+    
+    # 5. Установка ширины колонок
+    column_widths = {
+        'id': 150,
+        'date': 150,
+        'phone_number': 150,
+        'manager': 150,
+        'entity_name': 150,
+        'category': 150,
+        'evaluation': 150,
+        'dialogue': 500,
+        'summary': 250
+    }
+    
+    for i, header in enumerate(headers):
+        if header == '':
+            # Колонка оценки без названия
+            width = 50
+        else:
+            # Обычная колонка
+            width = column_widths.get(header, 250)  # По умолчанию 250 для колонок критериев
         
-        # Получаем настройки портала
-        portal_config = portal_settings.get(portal_name, {})
-        spreadsheet_id = portal_config.get('googlespreadsheet_id')
+        requests.append({
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "dimension": "COLUMNS",
+                    "startIndex": i,
+                    "endIndex": i + 1
+                },
+                "properties": {
+                    "pixelSize": width
+                },
+                "fields": "pixelSize"
+            }
+        })
+    
+    # 6. Отключение переноса по словам для колонки dialogue
+    dialogue_index = headers.index('dialogue') if 'dialogue' in headers else -1
+    if dialogue_index >= 0:
+        requests.append({
+            "repeatCell": {
+                "range": {
+                    "sheetId": worksheet.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1000,  # Достаточно большой диапазон
+                    "startColumnIndex": dialogue_index,
+                    "endColumnIndex": dialogue_index + 1
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "wrapStrategy": "OVERFLOW_CELL"
+                    }
+                },
+                "fields": "userEnteredFormat(wrapStrategy)"
+            }
+        })
+    
+    # Выполняем batch-запрос
+    await spreadsheet.batch_update({"requests": requests})
+    print("🎨 Форматирование применено: шапка, ширина колонок, фильтры, выравнивание")
+
+async def insert_records_batch(worksheet, rows: List[List], spreadsheet):
+    """Добавляет записи в лист одним батчем, сохраняя типы данных."""
+    if not rows:
+        print("📝 Нет записей для добавления")
+        return
+    all_values = await worksheet.get_all_values()
+    start_row = len(all_values) + 1 if all_values else 1
+
+    # Расширяем лист, если нужно
+    needed_rows = start_row + len(rows) - 1
+    if needed_rows > worksheet.row_count:
+        await worksheet.add_rows(needed_rows - worksheet.row_count)
+
+    requests = []
+    for row_idx, row in enumerate(rows):
+        current_row = start_row + row_idx
+        for col_idx, cell_value in enumerate(row):
+            # Определяем тип значения для корректной записи
+            user_value = {}
+            if isinstance(cell_value, (int, float)):
+                user_value = {"numberValue": float(cell_value)}
+            elif cell_value is None or cell_value == '':
+                user_value = {"stringValue": ""}
+            else:
+                user_value = {"stringValue": str(cell_value)}
+
+            requests.append({
+                "updateCells": {
+                    "range": {
+                        "sheetId": worksheet.id,
+                        "startRowIndex": current_row - 1,  # 0-based
+                        "endRowIndex": current_row,
+                        "startColumnIndex": col_idx,
+                        "endColumnIndex": col_idx + 1
+                    },
+                    "rows": [{
+                        "values": [{
+                            "userEnteredValue": user_value
+                        }]
+                    }],
+                    "fields": "userEnteredValue"
+                }
+            })
+
+    # Выполняем batch-запрос по частям (лимит API)
+    if requests:
+        chunk_size = 100  # Лимит API
+        for i in range(0, len(requests), chunk_size):
+            chunk = requests[i:i + chunk_size]
+            await spreadsheet.batch_update({"requests": chunk})
         
-        if not spreadsheet_id:
-            print(f"Не найден googlespreadsheet_id для портала {portal_name}, пропускаю")
-            continue
+        print(f"✅ Добавлено {len(rows)} записей через batch API")
+
+async def upload_records_to_google_sheets(portal_data: Dict, portal_config: Dict):
+    """Основная функция для загрузки записей в Google Sheets."""
+    portal_url = portal_config.get('url', 'Unknown')
+    spreadsheet_id = portal_config.get('googlespreadsheet_id', '')
+    
+    if not spreadsheet_id:
+        print(f"⚠️  Для портала {portal_url} не указан ID Google Sheets. Пропускаю.")
+        return
+
+    print(f"📊 Загружаю данные для портала {portal_url} в Google Sheets...")
+
+    # Подготавливаем данные
+    headers, rows = prepare_records_data(portal_data)
+    if not rows:
+        print("📝 Нет записей для загрузки")
+        return
+
+    # Подключаемся к Google Sheets
+    client = await get_google_sheets_client()
+    spreadsheet = await client.open_by_key(spreadsheet_id)
+
+    # Получаем или создаем лист "Звонки"
+    worksheet = await get_or_create_worksheet(spreadsheet, "Звонки")
+
+    # Анализируем существующий лист
+    sheet_info = await analyze_existing_worksheet(worksheet)
+    existing_headers = sheet_info['existing_headers']
+    existing_data = sheet_info['existing_data']
+    is_new_sheet = sheet_info['is_empty'] and not existing_headers
+
+    if is_new_sheet:
+        # Новый лист: создаем шапку и загружаем все данные
+        await apply_header_and_formatting(worksheet, headers, spreadsheet)
+        await insert_records_batch(worksheet, rows, spreadsheet)
+        print(f"🎉 Новый лист 'Звонки' создан и заполнен {len(rows)} записями")
+    else:
+        # Существующий лист: проверяем заголовки и добавляем недостающие записи
+        if existing_headers != headers:
+            await apply_header_and_formatting(worksheet, headers, spreadsheet)
+            print("🔄 Заголовки обновлены, форматирование применено")
+        else:
+            print("✅ Заголовки не изменились, форматирование не требуется")
+
+        # Фильтруем новые записи
+        filtered_rows = filter_new_records(rows, existing_data)
+        if filtered_rows:
+            await insert_records_batch(worksheet, filtered_rows, spreadsheet)
+            print(f"✅ Добавлено {len(filtered_rows)} новых записей в существующий лист")
+        else:
+            print("📝 Новых записей для добавления нет")
+
+async def upload_to_google_sheets(all_portals_data: Dict):
+    """Обрабатывает загрузку данных для всех порталов параллельно."""
+    portals = load_portal_configs()
+    tasks = []
+    
+    for portal_config in portals:
+        # Определяем название портала по URL
+        portal_url = portal_config.get('url', '')
+        portal_name = None
         
-        try:
-            # Открываем таблицу
-            spreadsheet = gc.open_by_key(spreadsheet_id)
-            print(f"Открыта таблица: {spreadsheet.title}")
-            
-            # Получаем критерии для портала
-            criteria = portal_data.get('criteria', [])
-            
-            # Сначала создаем/получаем лист "Сущности" чтобы получить его ID
-            entities_headers, entities_rows, entities_criterion_info = prepare_entities_data(portal_name, portal_data, criteria)
-            entities_sheet_id = None
-            
-            if entities_headers:  # Если есть сущности
-                entities_worksheet, is_new_entities_sheet = get_or_create_worksheet(spreadsheet, "Сущности", entities_headers)
-                entities_sheet_id = entities_worksheet.id
-            
-            # Загружаем записи в лист "Звонки" (передаем ID листа сущностей для гиперссылок)
-            records_headers, records_rows, records_criterion_info = prepare_records_data(portal_name, portal_data, criteria, entities_sheet_id)
-            if records_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
-                records_worksheet, is_new_sheet = get_or_create_worksheet(spreadsheet, "Звонки", records_headers)
-                
-                # НОВАЯ ЛОГИКА: Анализируем существующий лист
-                print("🔍 Анализирую существующий лист 'Звонки'")
-                sheet_info = analyze_existing_worksheet(records_worksheet)
-                
-                print(f"📊 Найдено в листе: {sheet_info['total_rows']} записей")
-                print(f"📋 Существующие колонки: {len(sheet_info['existing_headers'])}")
-                
-                # Добавляем недостающие колонки
-                final_headers, structure_changed = add_missing_columns(
-                    records_worksheet, 
-                    sheet_info['existing_headers'], 
-                    records_headers,
-                    criteria
-                )
-                
-                # Если это новый лист, форматирование нужно применить обязательно
-                need_formatting = is_new_sheet or structure_changed
-                if is_new_sheet:
-                    print("🆕 Новый лист - применяю полное форматирование")
-                elif structure_changed:
-                    print("🔄 Структура изменилась - применяю форматирование")
-                else:
-                    print("📋 Структура не изменилась - пропускаю форматирование")
-                
-                # Фильтруем только новые записи
-                new_records_only = filter_new_records(
-                    records_rows, 
-                    sheet_info['existing_record_ids'], 
-                    records_headers
-                )
-                
-                # Добавляем новые записи в конец
-                insert_new_records_at_bottom(
-                    records_worksheet, 
-                    new_records_only, 
-                    sheet_info['existing_headers'], 
-                    final_headers
-                )
-                
-                # Применяем все форматирование одним batch-запросом
-                total_data_rows = len(new_records_only) + sheet_info['total_rows']
-                apply_all_formatting_batch(
-                    records_worksheet, 
-                    final_headers, 
-                    records_criterion_info, 
-                    total_data_rows, 
-                    need_formatting=need_formatting
-                )
-            
-            # Обрабатываем сущности (лист уже создан выше)
-            if entities_headers:  # Проверяем заголовки, а не строки (лист может быть пустым)
-                
-                # НОВАЯ ЛОГИКА: Анализируем существующий лист
-                print("🔍 Анализирую существующий лист 'Сущности'")
-                sheet_info = analyze_existing_worksheet(entities_worksheet)
-                
-                print(f"📊 Найдено в листе: {sheet_info['total_rows']} сущностей")
-                print(f"📋 Существующие колонки: {len(sheet_info['existing_headers'])}")
-                
-                # Добавляем недостающие колонки
-                final_headers, structure_changed = add_missing_columns(
-                    entities_worksheet, 
-                    sheet_info['existing_headers'], 
-                    entities_headers,
-                    criteria
-                )
-                
-                # Если это новый лист, форматирование нужно применить обязательно
-                need_formatting = is_new_entities_sheet or structure_changed
-                if is_new_entities_sheet:
-                    print("🆕 Новый лист сущностей - применяю полное форматирование")
-                elif structure_changed:
-                    print("🔄 Структура сущностей изменилась - применяю форматирование")
-                else:
-                    print("📋 Структура сущностей не изменилась - пропускаю форматирование")
-                
-                # Фильтруем только новые сущности
-                new_entities_only = filter_new_records(
-                    entities_rows, 
-                    sheet_info['existing_record_ids'], 
-                    entities_headers
-                )
-                
-                # Добавляем новые сущности в конец
-                insert_new_records_at_bottom(
-                    entities_worksheet, 
-                    new_entities_only, 
-                    sheet_info['existing_headers'], 
-                    final_headers
-                )
-                
-                # Применяем все форматирование одним batch-запросом для сущностей
-                total_entities_rows = len(new_entities_only) + sheet_info['total_rows']
-                apply_all_formatting_batch(
-                    entities_worksheet, 
-                    final_headers, 
-                    entities_criterion_info, # Теперь у сущностей есть criterion_info для объединения
-                    total_entities_rows, 
-                    need_formatting=need_formatting
-                )
-            
-            print(f"✅ Портал {portal_name} обработан успешно")
-            
-        except Exception as e:
-            print(f"❌ Ошибка при обработке портала {portal_name}: {e}")
-            continue
+        # Ищем соответствующие данные для этого портала
+        for name, data in all_portals_data.items():
+            if name in portal_url or portal_url.endswith(name):
+                portal_name = name
+                break
+        
+        if portal_name and portal_name in all_portals_data:
+            portal_data = all_portals_data[portal_name]
+            task = upload_records_to_google_sheets(portal_data, portal_config)
+            tasks.append(task)
+        else:
+            print(f"⚠️  Данные для портала {portal_url} не найдены")
     
-    print("\n✅ Загрузка в Google Sheets завершена")
-
-
-async def main():
-    """
-    Тестовая функция для проверки загрузки
-    """
-    print("=== Google Sheets Uploader Test ===")
-    
-    # Импортируем функцию загрузки данных
-    from google_sheet.db_records_loader import load_records_entities_and_users
-    
-    # Загружаем данные из БД
-    data = await load_records_entities_and_users()
-    
-    # Сохраняем для отладки
-    save_debug_json(data, "google_sheets_uploader_input")
-    
-    # Загружаем в Google Sheets
-    await upload_to_google_sheets(data)
-    
-    print("🎉 Тест завершен")
-
+    # Выполняем все задачи параллельно
+    if tasks:
+        await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Тестовые данные
+    test_data = {
+        "records": [],
+        "users": [],
+        "criteria": []
+    }
+    asyncio.run(upload_to_google_sheets(test_data))
