@@ -22,9 +22,13 @@ async def main(delay: int):
         # Сохраняем отладочные данные
         save_debug_json(records, "google_sheets_records")
 
-        print("Шаг 2: Синхронизирую с Google таблицами")
-        from google_sheet.google_sheets_uploader import upload_to_google_sheets
+        print("Шаг 2: Синхронизирую записи с Google таблицами")
+        from google_sheet.records_uploader import upload_to_google_sheets
         await upload_to_google_sheets(records)
+        
+        print("Шаг 3: Синхронизирую сущности с Google таблицами")
+        from google_sheet.entities_uploader import upload_entities_to_google_sheets_all_portals
+        await upload_entities_to_google_sheets_all_portals(records)
         
         print("Все шаги успешно выполнены! Ожидаю перед следующим циклом...")
         await asyncio.sleep(delay)
