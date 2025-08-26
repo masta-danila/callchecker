@@ -3,6 +3,10 @@ from typing import Any, Coroutine
 
 from classifier import assign_category
 import json
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('dialog_classifier', 'logs/dialog_classifier.log')
 
 
 async def process_item(
@@ -32,12 +36,12 @@ async def process_item(
     # Пропускаем уже обработанные записи
     data = item.get("data")
     if isinstance(data, dict) and data.get("categories") and data.get("criteria"):
-        print(f"Пропуск: у {item.get('id')} уже есть непустые data.categories и data.criteria.")
+        logger.debug(f"Пропуск: у {item.get('id')} уже есть непустые data.categories и data.criteria.")
         return True
 
     dialogue = item.get("dialogue", "")
     
-    print(f"Обработка элемента {item.get('id')}")
+    logger.info(f"Обработка элемента id {item.get('id')}")
     
     # Формируем расширенный контекст из summary сущности и предыдущих записей
     extended_summary = ""
@@ -88,7 +92,7 @@ async def process_item(
         # Объединяем все части
         if summary_parts:
             extended_summary = "\n".join(summary_parts)
-            print(f"Расширенный контекст для записи {item.get('id')}: найдено {len(related_records)} связанных записей")
+            logger.debug(f"Расширенный контекст для записи {item.get('id')}: найдено {len(related_records)} связанных записей")
 
     for attempt in range(max_retries):
         try:
@@ -137,18 +141,18 @@ async def process_item(
                 "criteria": criteria_details
             }
 
-            print(f"Элемент {item.get('id')} обработан")
+            logger.info(f"Элемент id {item.get('id')} обработан")
             return True
 
         except Exception as e:
             if attempt < max_retries - 1:
-                print(
+                logger.warning(
                     f"Ошибка при обработке {item.get('id')}, попытка {attempt + 1}: {e}. "
                     f"Повтор через {retry_delay}s."
                 )
                 await asyncio.sleep(retry_delay)
             else:
-                print(
+                logger.error(
                     f"Элемент {item.get('id')} не обработан за {max_retries} попыток. Ошибка: {e}"
                 )
                 raise ValueError(

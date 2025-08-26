@@ -7,6 +7,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db_client import get_db_client
 from debug_utils import save_debug_json
+from logger_config import setup_logger
+
+logger = setup_logger('entity_db_manager', 'logs/entity_db_manager.log')
 
 
 def upsert_entities_to_db(portal_name: str, entities: list) -> dict:
@@ -18,10 +21,10 @@ def upsert_entities_to_db(portal_name: str, entities: list) -> dict:
     :return: Словарь {(entity_type_id, entity_id): internal_id}
     """
     if not entities:
-        print(f"Нет сущностей для обновления в портале {portal_name}")
+        logger.info(f"Нет сущностей для обновления в портале {portal_name}")
         return {}
     
-    print(f"Обновляю {len(entities)} сущностей в БД для портала {portal_name}")
+    logger.info(f"Обновляю {len(entities)} сущностей в БД для портала {portal_name}")
     
     entity_id_mapping = {}
     
@@ -38,7 +41,7 @@ def upsert_entities_to_db(portal_name: str, entities: list) -> dict:
                     # Преобразуем entity_type_id в enum значение
                     entity_type_enum = get_entity_type_enum(entity_type_id)
                     if not entity_type_enum:
-                        print(f"Неизвестный тип сущности: {entity_type_id}, пропускаю")
+                        logger.warning(f"Неизвестный тип сущности: {entity_type_id}, пропускаю")
                         continue
                     
                     # UPSERT: INSERT ... ON CONFLICT DO UPDATE
@@ -68,14 +71,14 @@ def upsert_entities_to_db(portal_name: str, entities: list) -> dict:
                     entity_key = (entity_type_id, entity_id_bitrix)
                     entity_id_mapping[entity_key] = internal_id
                     
-                    print(f"Сущность {entity_type_enum}:{entity_id_bitrix} → внутренний ID: {internal_id}")
+                    logger.debug(f"Сущность {entity_type_enum}:{entity_id_bitrix} → внутренний ID: {internal_id}")
                 
                 # Коммитим все изменения
                 conn.commit()
-                print(f"Успешно обновлено {len(entity_id_mapping)} сущностей в БД")
+                logger.info(f"Успешно обновлено {len(entity_id_mapping)} сущностей в БД")
                 
             except Exception as e:
-                print(f"Ошибка при обновлении сущностей: {e}")
+                logger.error(f"Ошибка при обновлении сущностей: {e}")
                 conn.rollback()
                 return {}
     
@@ -107,12 +110,13 @@ async def update_entities_in_database(
     :param records_with_entities: Словарь с записями и сущностями из entity_fetcher
     :return: Тот же словарь с добавленными 'id' полями в сущностях
     """
-    print("Шаг 4: Обновляю сущности в базе данных")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Обновление сущностей в БД ===")
+    logger.info("Шаг 4: Обновляю сущности в базе данных")
     
     result_records = {}
     
     for portal_name, portal_data in records_with_entities.items():
-        print(f"Обрабатываю сущности для портала {portal_name}")
+        logger.info(f"Обрабатываю сущности для портала {portal_name}")
         
         entities = portal_data.get('entities', [])
         call_records = portal_data.get('records', [])
@@ -146,6 +150,7 @@ async def update_entities_in_database(
             'entities': enhanced_entities  # Сущности с добавленными внутренними ID
         }
     
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Обновление сущностей в БД ===")
     return result_records
 
 
@@ -209,13 +214,13 @@ if __name__ == "__main__":
     }
     
     async def test():
-        print("Тестирую обновление сущностей в БД")
+        logger.info("Тестирую обновление сущностей в БД")
         
         result = await update_entities_in_database(test_data)
         
         # Сохраняем результат для отладки
         save_debug_json(result, "test_entity_db_update")
         
-        print("Тестирование завершено, результат сохранен в bitrix24/json_tests/test_entity_db_update.json")
+        logger.info("Тестирование завершено, результат сохранен в bitrix24/json_tests/test_entity_db_update.json")
     
     asyncio.run(test())

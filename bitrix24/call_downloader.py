@@ -2,6 +2,14 @@ import asyncio
 import aiohttp
 import aiofiles
 import os
+import sys
+
+# Добавляем корневую папку в путь для импорта модулей
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from logger_config import setup_logger
+
+logger = setup_logger('call_downloader', 'logs/call_downloader.log')
 
 
 async def download_call_by_id(portal_name, user_id, token, call_id):
@@ -14,7 +22,7 @@ async def download_call_by_id(portal_name, user_id, token, call_id):
     :param call_id: ID звонка для скачивания (например: 493123)
     :return: Путь к скачанному файлу или None при ошибке
     """
-    print(f"Скачиваю звонок {call_id}")
+    logger.debug(f"Скачиваю звонок {call_id}")
     
     # Получаем данные звонка
     record_url = await get_call_record_url(portal_name, user_id, token, call_id)
@@ -61,17 +69,17 @@ async def get_call_record_url(portal_name, user_id, token, call_id):
                         if record_url:
                             return record_url
                         else:
-                            print(f"У звонка {call_id} нет записи")
+                            logger.warning(f"У звонка {call_id} нет записи")
                             return None
                     else:
-                        print(f"Звонок {call_id} не найден")
+                        logger.warning(f"Звонок {call_id} не найден")
                         return None
                 else:
-                    print(f"Ошибка API: {response.status}")
+                    logger.error(f"Ошибка API: {response.status}")
                     return None
                     
     except Exception as e:
-        print(f"Ошибка при получении данных звонка {call_id}: {e}")
+        logger.error(f"Ошибка при получении данных звонка {call_id}: {e}")
         return None
 
 
@@ -89,14 +97,14 @@ async def download_audio_file(record_url, file_path):
                             await f.write(chunk)
                     
                     file_size = os.path.getsize(file_path)
-                    print(f"Файл сохранен: {file_path} ({file_size // 1024} KB)")
+                    logger.info(f"Файл сохранен: {file_path} ({file_size // 1024} KB)")
                     return True
                 else:
-                    print(f"Ошибка скачивания: {response.status}")
+                    logger.error(f"Ошибка скачивания: {response.status}")
                     return False
                     
     except Exception as e:
-        print(f"Ошибка при скачивании файла: {e}")
+        logger.error(f"Ошибка при скачивании файла: {e}")
         return False
 
 
@@ -109,6 +117,6 @@ if __name__ == "__main__":
             token="eap2dc10t3z42q27",
             call_id="493235"
         )
-        print(f"Результат: {result}")
+        logger.info(f"Результат: {result}")
     
     asyncio.run(test())

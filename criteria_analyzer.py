@@ -1,5 +1,9 @@
 import asyncio
 from criterion_processor import process_client_data
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('criteria_analyzer', 'logs/criteria_analyzer.log')
 
 
 async def analyze_criteria(
@@ -33,17 +37,18 @@ async def analyze_criteria(
                 # Ограничиваем параллелизм
                 async with semaphore:
                     result = await process_client_data(dialogue, criterion)
-                print(f"[OK]   ID={record_id!r}, критерий={criterion.get('name')!r}, попытка={attempt}")
+                logger.debug(f"[OK]   ID={record_id!r}, критерий={criterion.get('name')!r}, попытка={attempt}")
                 return result
             except Exception as e:
-                print(f"[ERR]  ID={record_id!r}, критерий={criterion.get('name')!r}, попытка={attempt}: {e}")
+                logger.warning(f"[ERR]  ID={record_id!r}, критерий={criterion.get('name')!r}, попытка={attempt}: {e}")
                 if attempt < max_retries:
                     await asyncio.sleep(retry_delay)
                 else:
-                    print(f"[FAIL] ID={record_id!r}, критерий={criterion.get('name')!r} — исчерпаны все {max_retries} попыток")
+                    logger.error(f"[FAIL] ID={record_id!r}, критерий={criterion.get('name')!r} — исчерпаны все {max_retries} попыток")
                     return None
 
     # Собираем все задачи в один список
+    total_criteria_count = 0
     for client, client_block in input_data.items():
         records = client_block.get("records", [])
         criteria_definitions = client_block.get("criteria", [])
@@ -61,9 +66,14 @@ async def analyze_criteria(
                 # создаём корутину, но не запускаем её сразу, а в gather ниже
                 coro = process_with_retries(dialogue, full_crit, record_id)
                 tasks.append((crit_ref, coro))
+                total_criteria_count += 1
 
+    logger.info(f"Начинаю анализ {total_criteria_count} критериев")
+    
     # Параллельно выполняем все запросы
     results = await asyncio.gather(*(t[1] for t in tasks))
+    
+    logger.info(f"Завершен анализ критериев")
 
     # Распаковываем результаты обратно в crit_refs
     for (crit_ref, _), processed in zip(tasks, results):

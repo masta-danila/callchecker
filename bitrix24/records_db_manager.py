@@ -7,6 +7,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db_client import get_db_client
+from logger_config import setup_logger
+
+logger = setup_logger('records_db_manager', 'logs/records_db_manager.log')
 
 
 def upsert_records_to_db(portal_name: str, records: list) -> list:
@@ -18,7 +21,7 @@ def upsert_records_to_db(portal_name: str, records: list) -> list:
     :return: Список записей с обновленными данными из БД
     """
     if not records:
-        print(f"Нет записей для обновления в портале {portal_name}")
+        logger.info(f"Нет записей для обновления в портале {portal_name}")
         return []
     
     table_name = f"{portal_name}"
@@ -54,14 +57,14 @@ def upsert_records_to_db(portal_name: str, records: list) -> list:
                         entity_result = cursor.fetchone()
                         if entity_result:
                             internal_entity_id = entity_result[0]
-                            print(f"Найдена сущность: {crm_entity_type} {bitrix_entity_id} -> внутренний ID {internal_entity_id}")
+                            logger.debug(f"Найдена сущность: {crm_entity_type} {bitrix_entity_id} -> внутренний ID {internal_entity_id}")
                         else:
-                            print(f"Сущность не найдена: {crm_entity_type} {bitrix_entity_id}")
+                            logger.warning(f"Сущность не найдена: {crm_entity_type} {bitrix_entity_id}")
                     
                     # Преобразуем audio_metadata в JSON строку
                     audio_metadata_json = json.dumps(audio_metadata) if audio_metadata else None
                     
-                    print(f"Обновляю запись {call_id} в таблице {table_name}")
+                    logger.debug(f"Обновляю запись {call_id} в таблице {table_name}")
                     
                     # UPSERT запрос - устанавливаем статус 'uploaded'
                     query = f"""
@@ -87,17 +90,17 @@ def upsert_records_to_db(portal_name: str, records: list) -> list:
                     
                     result = cursor.fetchone()
                     if result:
-                        print(f"Запись {call_id} успешно обновлена в БД")
+                        logger.debug(f"Запись {call_id} успешно обновлена в БД")
                         updated_records.append(record)
                     else:
-                        print(f"Ошибка при обновлении записи {call_id}")
+                        logger.error(f"Ошибка при обновлении записи {call_id}")
                 
                 conn.commit()
-                print(f"Портал {portal_name}: {len(updated_records)}/{len(records)} записей успешно обновлено")
+                logger.info(f"Портал {portal_name}: {len(updated_records)}/{len(records)} записей успешно обновлено")
                 return updated_records
                 
             except Exception as e:
-                print(f"Ошибка при обновлении записей портала {portal_name}: {e}")
+                logger.error(f"Ошибка при обновлении записей портала {portal_name}: {e}")
                 conn.rollback()
                 return []
 
@@ -109,16 +112,17 @@ async def update_records_in_database(data_dict: dict) -> dict:
     :param data_dict: Словарь с данными по порталам из предыдущих шагов
     :return: Словарь только со статистикой обновления по порталам
     """
-    print("Начинаю обновление записей в БД")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Обновление записей в БД ===")
+    logger.info("Начинаю обновление записей в БД")
     
     result_dict = {}
     
     for portal_name, portal_data in data_dict.items():
-        print(f"\nОбрабатываю портал: {portal_name}")
+        logger.info(f"Обрабатываю портал: {portal_name}")
         
         records = portal_data.get('records', [])
         if not records:
-            print(f"Нет записей для портала {portal_name}")
+            logger.info(f"Нет записей для портала {portal_name}")
             result_dict[portal_name] = {
                 'db_update_stats': {
                     'total_records': 0,
@@ -140,7 +144,8 @@ async def update_records_in_database(data_dict: dict) -> dict:
             }
         }
     
-    print("Обновление записей в БД завершено")
+    logger.info("Обновление записей в БД завершено")
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Обновление записей в БД ===")
     return result_dict
 
 

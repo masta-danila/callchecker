@@ -1,6 +1,15 @@
 import asyncio
 import aiohttp
 import json
+import os
+import sys
+
+# Добавляем корневую папку в путь для импорта модулей
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from logger_config import setup_logger
+
+logger = setup_logger('bitrix_entity_fetcher', 'logs/bitrix_entity_fetcher.log')
 
 
 async def fetch_entity_from_bitrix(portal_name, user_id, token, entity_type_id, entity_id):
@@ -41,16 +50,16 @@ async def fetch_entity_from_bitrix(portal_name, user_id, token, entity_type_id, 
                         
                         return entity_data
                     else:
-                        print(f"Нет данных в ответе для сущности {entity_type_id}:{entity_id}")
+                        logger.warning(f"Нет данных в ответе для сущности {entity_type_id}:{entity_id}")
                         return None
                 else:
-                    print(f"Ошибка API: {response.status}")
+                    logger.error(f"Ошибка API: {response.status}")
                     response_text = await response.text()
-                    print(f"Ответ сервера: {response_text}")
+                    logger.error(f"Ответ сервера: {response_text}")
                     return None
                     
     except Exception as e:
-        print(f"Ошибка при получении сущности {entity_type_id}:{entity_id}: {e}")
+        logger.error(f"Ошибка при получении сущности {entity_type_id}:{entity_id}: {e}")
         return None
 
 
@@ -77,7 +86,7 @@ async def fetch_multiple_entities(portal_name, user_id, token, entities_list):
         if result and not isinstance(result, Exception):
             entities_data[entity_key] = result
         else:
-            print(f"Не удалось получить данные для сущности {entity_key}")
+            logger.error(f"Не удалось получить данные для сущности {entity_key}")
     
     return entities_data
 
@@ -93,20 +102,20 @@ if __name__ == "__main__":
         entity_type_id = 1  # CONTACT
         entity_id = 347843
         
-        print("Тестирую получение сущности")
-        print(f"Портал: {portal_name}")
-        print(f"Тип сущности: {entity_type_id} (CONTACT)")
-        print(f"ID сущности: {entity_id}")
-        print("-" * 50)
+        logger.info("Тестирую получение сущности")
+        logger.info(f"Портал: {portal_name}")
+        logger.info(f"Тип сущности: {entity_type_id} (CONTACT)")
+        logger.info(f"ID сущности: {entity_id}")
+        logger.info("-" * 50)
         
         result = await fetch_entity_from_bitrix(
             portal_name, user_id, token, entity_type_id, entity_id
         )
         
         if result:
-            print("Результат:")
-            print(result)
+            logger.info("Результат:")
+            logger.info(result)
         else:
-            print("Не удалось получить данные сущности")
+            logger.error("Не удалось получить данные сущности")
     
     asyncio.run(test())

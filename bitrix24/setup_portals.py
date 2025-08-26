@@ -1,11 +1,17 @@
 import json
 import os
-import sys
 import re
+import sys
 from urllib.parse import urlparse
 
 # Добавляем корневую папку в путь для импорта модулей
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from db_create_table import create_tables
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('setup_portals', 'logs/setup_portals.log')
 
 
 def load_portals_config(config_file='bitrix_portals.json'):
@@ -21,10 +27,10 @@ def load_portals_config(config_file='bitrix_portals.json'):
             config = json.load(f)
         return config.get('portals', [])
     except FileNotFoundError:
-        print(f"Ошибка: файл конфигурации {config_file} не найден в {current_dir}")
+        logger.error(f"Ошибка: файл конфигурации {config_file} не найден в {current_dir}")
         return []
     except json.JSONDecodeError as e:
-        print(f"Ошибка в JSON файле: {e}")
+        logger.error(f"Ошибка в JSON файле: {e}")
         return []
 
 
@@ -41,7 +47,7 @@ def extract_portal_name(url):
             return portal_name
         return None
     except Exception as e:
-        print(f"Ошибка при парсинге URL {url}: {e}")
+        logger.error(f"Ошибка при парсинге URL {url}: {e}")
         return None
 
 
@@ -62,12 +68,13 @@ def get_existing_portal_tables():
         
         with get_db_client() as conn:
             with conn.cursor() as cur:
-                # Ищем таблицы, которые не заканчиваются на _entities, _categories и т.д.
+                # Ищем только основные таблицы порталов (исключаем все служебные таблицы)
                 cur.execute("""
                     SELECT table_name 
                     FROM information_schema.tables 
                     WHERE table_schema = 'public' 
                     AND table_name NOT LIKE '%_entities'
+                    AND table_name NOT LIKE '%_users'
                     AND table_name NOT LIKE '%_categories'
                     AND table_name NOT LIKE '%_criteria'
                     AND table_name NOT LIKE '%_criterion_groups'
@@ -78,7 +85,7 @@ def get_existing_portal_tables():
                 tables = [row[0] for row in cur.fetchall()]
                 return tables
     except Exception as e:
-        print(f"Ошибка при получении списка таблиц: {e}")
+        logger.error(f"Ошибка при получении списка таблиц: {e}")
         return []
 
 
@@ -103,11 +110,12 @@ def drop_portal_tables(portal_name):
                 
                 for table in tables_to_drop:
                     cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+                    logger.debug(f"Удалена таблица {table}")
                 
-                print(f"Таблицы для портала {portal_name} удалены")
+                logger.info(f"Таблицы для портала {portal_name} удалены")
                 return True
     except Exception as e:
-        print(f"Ошибка при удалении таблиц для портала {portal_name}: {e}")
+        logger.error(f"Ошибка при удалении таблиц для портала {portal_name}: {e}")
         return False
 
 
@@ -132,11 +140,11 @@ def cleanup_unused_portals(config_portals):
     unused_portals = [table for table in existing_tables if table not in config_portal_names]
     
     if unused_portals:
-        print(f"Найдены неиспользуемые порталы: {unused_portals}")
+        logger.warning(f"Найдены неиспользуемые порталы: {unused_portals}")
         for portal in unused_portals:
             drop_portal_tables(portal)
     else:
-        print("Неиспользуемых порталов не найдено")
+        logger.info("Неиспользуемых порталов не найдено")
 
 
 def portal_tables_exist(portal_name):
@@ -158,7 +166,7 @@ def portal_tables_exist(portal_name):
                 count = cur.fetchone()[0]
                 return count > 0
     except Exception as e:
-        print(f"Ошибка при проверке существования таблиц для {portal_name}: {e}")
+        logger.error(f"Ошибка при проверке существования таблиц для {portal_name}: {e}")
         return False
 
 
@@ -166,7 +174,7 @@ def setup_portal_tables(portal_config):
     """
     Создает таблицы для одного портала
     """
-    print(f"Обрабатываю URL: {portal_config}")
+    logger.info(f"Обрабатываю URL: {portal_config}")
     
     # Извлекаем URL из конфигурации портала
     if isinstance(portal_config, dict):
@@ -175,29 +183,28 @@ def setup_portal_tables(portal_config):
         portal_url = portal_config
     
     if not validate_portal_url(portal_url):
-        print(f"Некорректный URL: {portal_url}")
+        logger.error(f"Некорректный URL: {portal_url}")
         return False
     
     portal_name = extract_portal_name(portal_url)
     if not portal_name:
-        print(f"Не удалось извлечь имя портала из URL: {portal_url}")
+        logger.error(f"Не удалось извлечь имя портала из URL: {portal_url}")
         return False
     
-    print(f"Имя портала: {portal_name}")
+    logger.info(f"Имя портала: {portal_name}")
     
     # Проверяем, существуют ли уже таблицы
     if portal_tables_exist(portal_name):
-        print(f"Таблицы для портала {portal_name} уже существуют, пропускаю")
+        logger.info(f"Таблицы для портала {portal_name} уже существуют, пропускаю")
         return True
     
     try:
-        from db_create_table import create_tables
-        print(f"Создаю таблицы для портала {portal_name}")
+        logger.info(f"Создаю таблицы для портала {portal_name}")
         create_tables(portal_name)
-        print(f"Таблицы для портала {portal_name} созданы успешно")
+        logger.info(f"Таблицы для портала {portal_name} созданы успешно")
         return True
     except Exception as e:
-        print(f"Ошибка при создании таблиц для портала {portal_name}: {e}")
+        logger.error(f"Ошибка при создании таблиц для портала {portal_name}: {e}")
         return False
 
 
@@ -205,33 +212,36 @@ def main():
     """
     Основная функция
     """
-    print("Настройка таблиц для Bitrix24 порталов")
+    logger.info("Настройка таблиц для Bitrix24 порталов")
     
     portals = load_portals_config()
     if not portals:
-        print("Нет порталов для обработки")
+        logger.warning("Нет порталов для обработки")
         return
     
-    print(f"Найдено порталов: {len(portals)}")
+    logger.info(f"Найдено порталов: {len(portals)}")
     
     # Удаляем таблицы порталов, которых нет в конфиге
-    print("\nОчистка неиспользуемых порталов:")
+    logger.info("Очистка неиспользуемых порталов:")
     cleanup_unused_portals(portals)
     
     success_count = 0
     error_count = 0
     
     for i, portal_config in enumerate(portals, 1):
-        print(f"\n--- Портал {i}/{len(portals)} ---")
+        logger.info(f"--- Портал {i}/{len(portals)} ---")
         
         if setup_portal_tables(portal_config):
             success_count += 1
         else:
             error_count += 1
     
-    print(f"\nОбработка завершена")
-    print(f"Успешно: {success_count}")
-    print(f"Ошибки: {error_count}")
+    logger.info(f"Обработка завершена")
+    logger.info(f"Успешно: {success_count}")
+    if error_count > 0:
+        logger.warning(f"Ошибки: {error_count}")
+    else:
+        logger.info("Все порталы обработаны без ошибок")
 
 
 if __name__ == "__main__":

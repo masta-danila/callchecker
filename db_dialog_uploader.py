@@ -1,5 +1,9 @@
 import psycopg2.extras
 from db_client import get_db_client
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('db_dialog_uploader', 'logs/db_dialog_uploader.log')
 
 
 def upload_recognized_dialogs(dialogues_dict, default_status=None):
@@ -19,12 +23,15 @@ def upload_recognized_dialogs(dialogues_dict, default_status=None):
         ...
     }
     """
+    logger.info(f"Начинаю загрузку диалогов в БД для {len(dialogues_dict)} таблиц")
     with get_db_client() as connection:
         try:
             with connection.cursor() as cursor:
+                total_updated = 0
                 for table_name, table_data in dialogues_dict.items():
                     records = table_data.get("records", [])
                     if not records:
+                        logger.debug(f"Таблица {table_name}: нет записей для обновления")
                         continue
 
                     data_for_update = []
@@ -38,6 +45,7 @@ def upload_recognized_dialogs(dialogues_dict, default_status=None):
                             data_for_update.append((record_id, dialogue_text, summary_text, record_status))
 
                     if not data_for_update:
+                        logger.debug(f"Таблица {table_name}: нет валидных записей для обновления")
                         continue
 
                     update_query = f"""
@@ -55,12 +63,16 @@ def upload_recognized_dialogs(dialogues_dict, default_status=None):
                         data_for_update,
                         template="(%s, %s, %s, %s)"
                     )
+                    
+                    updated_count = cursor.rowcount
+                    total_updated += updated_count
+                    logger.info(f"Таблица {table_name}: обновлено {updated_count} записей")
 
             connection.commit()
-            print("Загрузка диалогов завершена.")
+            logger.info(f"Загрузка диалогов завершена. Всего обновлено {total_updated} записей")
         except Exception as e:
             connection.rollback()
-            print("Ошибка при загрузке диалогов:", e)
+            logger.error(f"Ошибка при загрузке диалогов: {e}")
             raise
 
 

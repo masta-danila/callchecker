@@ -8,25 +8,40 @@ from google.oauth2.service_account import Credentials
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db_client import get_db_client
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('sync_categories_criteria', 'logs/sync_categories_criteria.log')
 
 
 def get_google_sheets_client():
     """Авторизация в Google Sheets API"""
-    scopes = [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
-    ]
-    
-    credentials_path = os.path.join(os.path.dirname(__file__), "google_sheets_credentials.json")
-    credentials = Credentials.from_service_account_file(credentials_path, scopes=scopes)
-    return gspread.authorize(credentials)
+    try:
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        
+        credentials_path = os.path.join(os.path.dirname(__file__), "google_sheets_credentials.json")
+        credentials = Credentials.from_service_account_file(credentials_path, scopes=scopes)
+        logger.debug("Google Sheets авторизация успешна")
+        return gspread.authorize(credentials)
+    except Exception as e:
+        logger.error(f"Ошибка авторизации Google Sheets: {e}")
+        raise
 
 
 def load_portals_config():
     """Загружаем конфигурацию порталов"""
-    config_path = os.path.join(os.path.dirname(__file__), "bitrix_portals.json")
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "bitrix_portals.json")
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            logger.debug(f"Загружена конфигурация порталов: {len(config.get('portals', []))} порталов")
+            return config
+    except Exception as e:
+        logger.error(f"Ошибка загрузки конфигурации порталов: {e}")
+        raise
 
 
 def extract_portal_name(portal_url):
@@ -39,79 +54,86 @@ def extract_portal_name(portal_url):
 
 def sync_criterion_groups(portal_name, spreadsheet_id):
     """Синхронизация групп критериев между Google Sheets и БД"""
-    print(f"Синхронизация групп критериев для портала '{portal_name}'")
+    logger.info(f"Синхронизация групп критериев для портала '{portal_name}'")
     
-    # Подключаемся к Google Sheets
-    gc = get_google_sheets_client()
-    sheet = gc.open_by_key(spreadsheet_id)
-    worksheet = sheet.worksheet("Группы критериев")
-    sheet_data = worksheet.get_all_records()
-    
-    if not sheet_data:
-        print("Нет данных в листе 'Группы критериев'")
-        return
-    
-    # Работаем с БД
-    with get_db_client() as conn:
-        with conn.cursor() as cursor:
-            table_name = f"{portal_name}_criterion_groups"
-            updated_data = []
-            
-            for row in sheet_data:
-                group_id = str(row.get('id', '')).strip()
-                group_name = str(row.get('name', '')).strip()
+    try:
+        # Подключаемся к Google Sheets
+        gc = get_google_sheets_client()
+        sheet = gc.open_by_key(spreadsheet_id)
+        worksheet = sheet.worksheet("Группы критериев")
+        sheet_data = worksheet.get_all_records()
+        
+        if not sheet_data:
+            logger.warning("Нет данных в листе 'Группы критериев'")
+            return
+        
+        logger.info(f"Найдено {len(sheet_data)} групп критериев в Google Sheets")
+        
+        # Работаем с БД
+        with get_db_client() as conn:
+            with conn.cursor() as cursor:
+                table_name = f"{portal_name}_criterion_groups"
+                updated_data = []
                 
-                if not group_name:
-                    continue
+                for row in sheet_data:
+                    group_id = str(row.get('id', '')).strip()
+                    group_name = str(row.get('name', '')).strip()
+                    
+                    if not group_name:
+                        continue
+                    
+                    if group_id and group_id.isdigit():
+                        # Обновляем существующую запись
+                        cursor.execute(f"""
+                            UPDATE {table_name} 
+                            SET name = %s 
+                            WHERE id = %s
+                            RETURNING id;
+                        """, (group_name, int(group_id)))
+                        
+                        result = cursor.fetchone()
+                        if result:
+                            updated_data.append({'id': str(result[0]), 'name': group_name})
+                            logger.debug(f"Обновлена группа ID {group_id}: {group_name}")
+                    else:
+                        # Создаем новую запись
+                        cursor.execute(f"""
+                            INSERT INTO {table_name} (name) 
+                            VALUES (%s) 
+                            RETURNING id;
+                        """, (group_name,))
+                        
+                        new_id = cursor.fetchone()[0]
+                        updated_data.append({'id': str(new_id), 'name': group_name})
+                        logger.info(f"Создана новая группа ID {new_id}: {group_name}")
                 
-                if group_id and group_id.isdigit():
-                    # Обновляем существующую запись
-                    cursor.execute(f"""
-                        UPDATE {table_name} 
-                        SET name = %s 
-                        WHERE id = %s
-                        RETURNING id;
-                    """, (group_name, int(group_id)))
-                    
-                    result = cursor.fetchone()
-                    if result:
-                        updated_data.append({'id': str(result[0]), 'name': group_name})
-                        print(f"Обновлена группа ID {group_id}: {group_name}")
-                else:
-                    # Создаем новую запись
-                    cursor.execute(f"""
-                        INSERT INTO {table_name} (name) 
-                        VALUES (%s) 
-                        RETURNING id;
-                    """, (group_name,))
-                    
-                    new_id = cursor.fetchone()[0]
-                    updated_data.append({'id': str(new_id), 'name': group_name})
-                    print(f"Создана новая группа ID {new_id}: {group_name}")
+                conn.commit()
             
-            conn.commit()
-            
-            # Обновляем Google Sheets с новыми ID (только колонку ID)
-            if updated_data:
-                try:
-                    # Пытаемся обновить только колонку A (ID)
-                    id_values = []
-                    for row in updated_data:
-                        id_values.append([row['id']])
+                # Обновляем Google Sheets с новыми ID (только колонку ID)
+                if updated_data:
+                    try:
+                        # Пытаемся обновить только колонку A (ID)
+                        id_values = []
+                        for row in updated_data:
+                            id_values.append([row['id']])
+                        
+                        # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
+                        worksheet.update(values=id_values, range_name=f'A2:A{len(updated_data)+1}', value_input_option='RAW')
+                        logger.info(f"Обновлены ID групп критериев в Google Sheets")
+                    except Exception as e:
+                        logger.error(f"Не удалось обновить Google Sheets: {e}")
+                        logger.warning("ID групп критериев сохранены в БД, но не обновлены в таблице")
                     
-                    # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
-                    worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
-                    print(f"Обновлены ID групп критериев в Google Sheets")
-                except Exception as e:
-                    print(f"Не удалось обновить Google Sheets: {e}")
-                    print("ID групп критериев сохранены в БД, но не обновлены в таблице")
+                    logger.info(f"Синхронизация групп критериев завершена для портала '{portal_name}'")
                 
-                print(f"Синхронизация групп критериев завершена для портала '{portal_name}'")
+    except Exception as e:
+        logger.error(f"Ошибка при синхронизации групп критериев для портала '{portal_name}': {e}")
+        raise
 
 
 def sync_criteria(portal_name, spreadsheet_id):
     """Синхронизация критериев между Google Sheets и БД"""
-    print(f"Синхронизация критериев для портала '{portal_name}'")
+    logger.info(f"Синхронизация критериев для портала '{portal_name}'")
     
     # Подключаемся к Google Sheets
     gc = get_google_sheets_client()
@@ -121,7 +143,7 @@ def sync_criteria(portal_name, spreadsheet_id):
     # Читаем все данные как списки
     all_values = worksheet.get_all_values()
     if not all_values:
-        print("Нет данных в листе 'Критерии'")
+        logger.warning("Нет данных в листе 'Критерии'")
         return
     
     # Первая строка - заголовки
@@ -139,7 +161,7 @@ def sync_criteria(portal_name, spreadsheet_id):
         sheet_data.append(row_dict)
     
     if not sheet_data:
-        print("Нет данных в листе 'Критерии'")
+        logger.warning("Нет данных в листе 'Критерии'")
         return
     
     # Работаем с БД
@@ -170,7 +192,7 @@ def sync_criteria(portal_name, spreadsheet_id):
                 # Находим ID группы по названию
                 group_id = groups_map.get(group_name)
                 if not group_id:
-                    print(f"Группа '{group_name}' не найдена в БД")
+                    logger.warning(f"Группа '{group_name}' не найдена в БД")
                     continue
                 
                 if criterion_id and criterion_id.isdigit():
@@ -200,7 +222,7 @@ def sync_criteria(portal_name, spreadsheet_id):
                             'include_in_entity_description': include_in_entity_description,
                             'llm_type': llm_type
                         })
-                        print(f"Обновлен критерий ID {criterion_id}: {criterion_name}")
+                        logger.debug(f"Обновлен критерий ID {criterion_id}: {criterion_name}")
                 else:
                     # Проверяем, существует ли критерий с таким названием
                     cursor.execute(f"""
@@ -235,7 +257,7 @@ def sync_criteria(portal_name, spreadsheet_id):
                             'include_in_entity_description': include_in_entity_description,
                             'llm_type': llm_type
                         })
-                        print(f"Обновлен критерий '{criterion_name}' (ID {existing_id}) - изменена группа на '{group_name}'")
+                        logger.info(f"Обновлен критерий '{criterion_name}' (ID {existing_id}) - изменена группа на '{group_name}'")
                     else:
                         # Создаем новый критерий
                         cursor.execute(f"""
@@ -260,7 +282,7 @@ def sync_criteria(portal_name, spreadsheet_id):
                             'include_in_entity_description': include_in_entity_description,
                             'llm_type': llm_type
                         })
-                        print(f"Создан новый критерий ID {new_id}: {criterion_name}")
+                        logger.info(f"Создан новый критерий ID {new_id}: {criterion_name}")
             
             conn.commit()
             
@@ -273,13 +295,13 @@ def sync_criteria(portal_name, spreadsheet_id):
                         id_values.append([row['id']])
                     
                     # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
-                    worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
-                    print(f"Обновлены ID критериев в Google Sheets")
+                    worksheet.update(values=id_values, range_name=f'A2:A{len(updated_data)+1}', value_input_option='RAW')
+                    logger.info(f"Обновлены ID критериев в Google Sheets")
                 except Exception as e:
-                    print(f"Не удалось обновить Google Sheets: {e}")
-                    print("ID критериев сохранены в БД, но не обновлены в таблице")
+                    logger.error(f"Не удалось обновить Google Sheets: {e}")
+                    logger.warning("ID критериев сохранены в БД, но не обновлены в таблице")
                 
-                print(f"Синхронизация критериев завершена для портала '{portal_name}'")
+                logger.info(f"Синхронизация критериев завершена для портала '{portal_name}'")
 
 
 def sync_categories(portal_name, spreadsheet_id):
@@ -336,7 +358,7 @@ def sync_categories(portal_name, spreadsheet_id):
                             'prompt': prompt,
                             'criteria': criteria_names
                         })
-                        print(f"Обновлена категория ID {category_id}: {category_name}")
+                        logger.debug(f"Обновлена категория ID {category_id}: {category_name}")
                 else:
                     # Проверяем, существует ли категория с таким названием
                     cursor.execute(f"""
@@ -362,7 +384,7 @@ def sync_categories(portal_name, spreadsheet_id):
                             'prompt': prompt,
                             'criteria': criteria_names
                         })
-                        print(f"Обновлена категория '{category_name}' (ID {existing_id})")
+                        logger.info(f"Обновлена категория '{category_name}' (ID {existing_id})")
                     else:
                         # Создаем новую категорию
                         cursor.execute(f"""
@@ -378,7 +400,7 @@ def sync_categories(portal_name, spreadsheet_id):
                             'prompt': prompt,
                             'criteria': criteria_names
                         })
-                        print(f"Создана новая категория ID {new_id}: {category_name}")
+                        logger.info(f"Создана новая категория ID {new_id}: {category_name}")
                 
                 # Синхронизируем связи с критериями
                 if updated_data:
@@ -391,10 +413,10 @@ def sync_categories(portal_name, spreadsheet_id):
             if updated_data:
                 id_values = [[item['id']] for item in updated_data]
                 try:
-                    worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
-                    print(f"Обновлены ID категорий в Google Sheets")
+                    worksheet.update(values=id_values, range_name=f'A2:A{len(updated_data)+1}', value_input_option='RAW')
+                    logger.info(f"Обновлены ID категорий в Google Sheets")
                 except Exception as e:
-                    print(f"Ошибка при обновлении Google Sheets: {e}")
+                    logger.error(f"Ошибка при обновлении Google Sheets: {e}")
 
 
 def sync_category_criteria(cursor, portal_name, category_id, criteria_names):
@@ -428,15 +450,22 @@ def sync_category_criteria(cursor, portal_name, category_id, criteria_names):
                 VALUES (%s, %s)
                 ON CONFLICT DO NOTHING
             """, (category_id, criterion_id))
-            print(f"  Связана категория {category_id} с критерием '{criterion_name}' (ID {criterion_id})")
+            logger.debug(f"  Связана категория {category_id} с критерием '{criterion_name}' (ID {criterion_id})")
         else:
-            print(f"  ВНИМАНИЕ: Критерий '{criterion_name}' не найден в БД")
+            logger.warning(f"  ВНИМАНИЕ: Критерий '{criterion_name}' не найден в БД")
 
 
 def sync_all_portals():
     """Синхронизирует данные для всех порталов"""
+    logger.info("Начинаю синхронизацию всех порталов")
+    
     config = load_portals_config()
     portals = config.get('portals', [])
+    
+    logger.info(f"Найдено {len(portals)} порталов для синхронизации")
+    
+    success_count = 0
+    error_count = 0
     
     for portal_config in portals:
         if isinstance(portal_config, str):
@@ -446,20 +475,27 @@ def sync_all_portals():
         spreadsheet_id = portal_config.get('googlespreadsheet_id', '')
         
         if not portal_url or not spreadsheet_id:
+            logger.warning(f"Пропущен портал с неполными данными: {portal_config}")
             continue
         
         portal_name = extract_portal_name(portal_url)
         if not portal_name:
+            logger.warning(f"Не удалось извлечь имя портала из URL: {portal_url}")
             continue
         
-        print(f"Обрабатываю портал: {portal_name}")
+        logger.info(f"Обрабатываю портал: {portal_name}")
         
         try:
             sync_criterion_groups(portal_name, spreadsheet_id)
             sync_criteria(portal_name, spreadsheet_id)
             sync_categories(portal_name, spreadsheet_id)
+            success_count += 1
+            logger.info(f"Портал {portal_name} успешно синхронизирован")
         except Exception as e:
-            print(f"Ошибка обработки портала {portal_name}: {e}")
+            error_count += 1
+            logger.error(f"Ошибка обработки портала {portal_name}: {e}")
+    
+    logger.info(f"Синхронизация завершена. Успешно: {success_count}, ошибок: {error_count}")
 
 
 def show_criteria_ids(portal_name):
@@ -474,15 +510,14 @@ def show_criteria_ids(portal_name):
             """)
             criteria = cursor.fetchall()
             
-            print(f"\nID критериев для портала {portal_name}:")
-            print("ID\tНазвание\tГруппа")
-            print("-" * 60)
+            logger.info(f"\nID критериев для портала {portal_name}:")
+            logger.info("ID\tНазвание\tГруппа")
+            logger.info("-" * 60)
             for criterion in criteria:
-                print(f"{criterion[0]}\t{criterion[1]}\t{criterion[2]}")
+                logger.info(f"{criterion[0]}\t{criterion[1]}\t{criterion[2]}")
 
 
 if __name__ == "__main__":
     sync_all_portals()
     
-    # Показываем ID для копирования в Google Sheets
-    show_criteria_ids("advertpro")
+    # Функция show_criteria_ids("portal_name") доступна для ручного вызова при необходимости

@@ -6,6 +6,10 @@ import sys
 # Добавляем корневую папку в путь для импорта модулей
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from logger_config import setup_logger
+
+logger = setup_logger('audio_cleanup', 'logs/audio_cleanup.log')
+
 
 def clean_audio_files_for_portal(portal_name: str):
     """Очищает папку с аудиофайлами для портала"""
@@ -14,7 +18,7 @@ def clean_audio_files_for_portal(portal_name: str):
     downloads_path = os.path.join(script_dir, "downloads", portal_name)
     
     if not os.path.exists(downloads_path):
-        print(f"Папка {downloads_path} не существует")
+        logger.info(f"Папка {downloads_path} не существует")
         return
     
     try:
@@ -22,25 +26,27 @@ def clean_audio_files_for_portal(portal_name: str):
             file_path = os.path.join(downloads_path, filename)
             if os.path.isfile(file_path):
                 os.remove(file_path)
-        print(f"Папка {downloads_path} очищена")
+        logger.info(f"Папка {downloads_path} очищена")
     except Exception as e:
-        print(f"Ошибка очистки папки {downloads_path}: {e}")
+        logger.error(f"Ошибка очистки папки {downloads_path}: {e}")
 
 
 async def cleanup_audio_files_after_db_upload(db_stats_dict: dict):
     """Очищает аудиофайлы для порталов с успешной загрузкой в БД"""
-    print("Очищаю аудиофайлы после загрузки в БД")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Очистка аудиофайлов ===")
+    logger.info("Очищаю аудиофайлы после загрузки в БД")
     
     for portal_name, portal_data in db_stats_dict.items():
         success_rate = portal_data.get('db_update_stats', {}).get('success_rate', 0)
         
         if success_rate == 1.0:
-            print(f"Портал {portal_name}: успешно загружен - очищаю файлы")
+            logger.info(f"Портал {portal_name}: успешно загружен - очищаю файлы")
             clean_audio_files_for_portal(portal_name)
         else:
-            print(f"Портал {portal_name}: есть ошибки - файлы НЕ удаляю")
+            logger.warning(f"Портал {portal_name}: есть ошибки - файлы НЕ удаляю")
     
-    print("Очистка завершена")
+    logger.info("Очистка завершена")
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Очистка аудиофайлов ===")
 
 
 if __name__ == "__main__":

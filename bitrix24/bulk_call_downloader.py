@@ -10,6 +10,10 @@ from urllib.parse import urlparse
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from call_downloader import download_call_by_id
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('bulk_call_downloader', 'logs/bulk_call_downloader.log')
 
 # Утилиты для работы с префиксами
 def add_call_prefix(call_id):
@@ -38,10 +42,10 @@ def load_portals_config(config_file='bitrix_portals.json'):
             config = json.load(f)
         return config
     except FileNotFoundError:
-        print(f"Ошибка: файл конфигурации {config_file} не найден в {current_dir}")
+        logger.error(f"Ошибка: файл конфигурации {config_file} не найден в {current_dir}")
         return {'portals': [], 'entityTypes': {}}
     except json.JSONDecodeError as e:
-        print(f"Ошибка в JSON файле: {e}")
+        logger.error(f"Ошибка в JSON файле: {e}")
         return {'portals': [], 'entityTypes': {}}
 
 
@@ -100,7 +104,7 @@ async def download_call_with_retry(portal_name, user_id, token, call_id, retries
                 await asyncio.sleep(request_delay)
                 
         except Exception as e:
-            print(f"Попытка {attempt + 1} для звонка {call_id}: {e}")
+            logger.warning(f"Попытка {attempt + 1} для звонка {call_id}: {e}")
             if attempt < retries - 1:
                 await asyncio.sleep(request_delay)
     
@@ -125,12 +129,13 @@ async def download_missing_calls_from_records(
     :param retries: Количество повторных попыток при ошибке
     :return: Словарь той же структуры с ID успешно скачанных файлов
     """
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Скачивание недостающих звонков ===")
     
     # Загружаем конфигурацию порталов
     config = load_portals_config()
     portals = config.get('portals', [])
     if not portals:
-        print("Нет порталов в конфигурации")
+        logger.warning("Нет порталов в конфигурации")
         return {}
     
     # Создаем маппинг portal_name -> (portal_url, user_id, token, days_back)
@@ -164,7 +169,7 @@ async def download_missing_calls_from_records(
     # Обрабатываем каждый портал
     for portal_name in all_portals_to_process:
         if portal_name not in portal_urls:
-            print(f"Портал {portal_name} не найден в конфигурации, пропускаю")
+            logger.warning(f"Портал {portal_name} не найден в конфигурации, пропускаю")
             continue
             
         portal_url, user_id, token, portal_days_back = portal_urls[portal_name]
@@ -181,15 +186,15 @@ async def download_missing_calls_from_records(
             prefixed_ids.append(add_call_prefix(record_id))  # Сохраняем с префиксом для внутренней работы
             call_ids.append(remove_call_prefix(record_id))   # Без префикса для сравнения с API
         
-        print(f"Обрабатываю портал {portal_name}: {len(prefixed_ids)} записей в БД, {len(call_ids)} ID для сравнения с API")
+        logger.info(f"Обрабатываю портал {portal_name}: {len(prefixed_ids)} записей в БД, {len(call_ids)} ID для сравнения с API")
         
         if not call_ids:
-            print(f"В БД нет записей для портала {portal_name}, ищу все звонки за период")
+            logger.info(f"В БД нет записей для портала {portal_name}, ищу все звонки за период")
         else:
-            print(f"Обрабатываю {len(call_ids)} записей для портала {portal_name}")
+            logger.info(f"Обрабатываю {len(call_ids)} записей для портала {portal_name}")
         
         # Скачиваем файлы для этого портала (исключая уже имеющиеся в БД)
-        print(f"Использую days_back={portal_days_back} для портала {portal_name}")
+        logger.info(f"Использую days_back={portal_days_back} для портала {portal_name}")
         successful_downloads = await download_calls_for_portal(
             portal_name, user_id, token, call_ids, 
             max_concurrent_requests, request_delay, retries, portal_days_back
@@ -208,6 +213,7 @@ async def download_missing_calls_from_records(
                 "records": records_with_prefixes
             }
     
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Скачивание недостающих звонков ===")
     return downloaded_records
 
 
@@ -263,11 +269,11 @@ async def get_portal_calls(portal_name, user_id, token, days_back=7):
                         else:
                             break
                     else:
-                        print(f"Ошибка API для портала {portal_name}: {response.status}")
+                        logger.error(f"Ошибка API для портала {portal_name}: {response.status}")
                         break
                         
     except Exception as e:
-        print(f"Ошибка при получении звонков для портала {portal_name}: {e}")
+        logger.error(f"Ошибка при получении звонков для портала {portal_name}: {e}")
     
     return all_calls
 
@@ -280,7 +286,7 @@ async def download_calls_for_portal(portal_name, user_id, token, existing_call_i
     all_bitrix_calls = await get_portal_calls(portal_name, user_id, token, days_back)
     
     if not all_bitrix_calls:
-        print(f"Нет звонков с записями в Bitrix24 для портала {portal_name}")
+        logger.info(f"Нет звонков с записями в Bitrix24 для портала {portal_name}")
         return []
     
     # Исключаем те, что уже есть в БД
@@ -307,10 +313,10 @@ async def download_calls_for_portal(portal_name, user_id, token, existing_call_i
     # Исключаем те, что уже скачаны в папке (только для скачивания)
     final_calls = [call for call in new_calls if call['id'] not in downloaded_files]
     
-    print(f"Найдено {len(all_bitrix_calls)} звонков в Bitrix24 для портала {portal_name}")
-    print(f"Исключено {len(existing_call_ids)} уже имеющихся в БД")
-    print(f"Исключено {len(downloaded_files)} уже скачанных файлов")
-    print(f"Нужно скачать {len(final_calls)} новых звонков")
+    logger.info(f"Найдено {len(all_bitrix_calls)} звонков в Bitrix24 для портала {portal_name}")
+    logger.info(f"Исключено {len(existing_call_ids)} уже имеющихся в БД")
+    logger.info(f"Исключено {len(downloaded_files)} уже скачанных файлов")
+    logger.info(f"Нужно скачать {len(final_calls)} новых звонков")
     
     # Формируем данные для уже скачанных файлов из папки
     already_downloaded = []
@@ -340,8 +346,8 @@ async def download_calls_for_portal(portal_name, user_id, token, existing_call_i
     # В результат включаем ВСЕ доступные файлы с полной информацией
     all_available_calls = already_downloaded + newly_downloaded
     
-    print(f"Успешно скачано {len(newly_downloaded)}/{len(final_calls)} новых файлов для портала {portal_name}")
-    print(f"Всего доступно файлов: {len(all_available_calls)} (включая ранее скачанные)")
+    logger.info(f"Успешно скачано {len(newly_downloaded)}/{len(final_calls)} новых файлов для портала {portal_name}")
+    logger.info(f"Всего доступно файлов: {len(all_available_calls)} (включая ранее скачанные)")
     
     return all_available_calls
 

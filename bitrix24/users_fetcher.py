@@ -8,6 +8,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from debug_utils import save_debug_json
+from logger_config import setup_logger
+
+logger = setup_logger('users_fetcher', 'logs/users_fetcher.log')
 
 
 def load_portals_config():
@@ -22,7 +25,7 @@ def load_portals_config():
         with open(config_path, 'r', encoding='utf-8') as file:
             return json.load(file)
     except Exception as e:
-        print(f"Ошибка при загрузке конфигурации порталов: {e}")
+        logger.error(f"Ошибка при загрузке конфигурации порталов: {e}")
         return {}
 
 
@@ -70,16 +73,16 @@ async def fetch_users_from_bitrix(portal_name, user_id, token, filters=None, sor
                             'total': data.get('total', len(users))
                         }
                     else:
-                        print(f"Нет данных в ответе для пользователей")
+                        logger.warning(f"Нет данных в ответе для пользователей")
                         return None
                 else:
-                    print(f"Ошибка API: {response.status}")
+                    logger.error(f"Ошибка API: {response.status}")
                     response_text = await response.text()
-                    print(f"Ответ сервера: {response_text}")
+                    logger.error(f"Ответ сервера: {response_text}")
                     return None
                     
     except Exception as e:
-        print(f"Ошибка при получении пользователей: {e}")
+        logger.error(f"Ошибка при получении пользователей: {e}")
         return None
 
 
@@ -98,36 +101,36 @@ async def fetch_all_users_from_bitrix(portal_name, user_id, token, filters=None,
     all_users = []
     start = 0
     
-    print(f"Получаю пользователей из портала {portal_name}")
+    logger.info(f"Получаю пользователей из портала {portal_name}")
     
     while True:
-        print(f"Запрашиваю пользователей начиная с позиции {start}")
+        logger.debug(f"Запрашиваю пользователей начиная с позиции {start}")
         
         result = await fetch_users_from_bitrix(
             portal_name, user_id, token, filters, sort_field, sort_order, start
         )
         
         if not result:
-            print("Ошибка при получении пользователей, прерываю")
+            logger.error("Ошибка при получении пользователей, прерываю")
             break
             
         users = result.get('users', [])
         if not users:
-            print("Больше пользователей нет")
+            logger.debug("Больше пользователей нет")
             break
             
         all_users.extend(users)
-        print(f"Получено {len(users)} пользователей, всего: {len(all_users)}")
+        logger.debug(f"Получено {len(users)} пользователей, всего: {len(all_users)}")
         
         # Проверяем есть ли следующая страница
         next_page = result.get('next')
         if not next_page:
-            print("Достигнут конец списка пользователей")
+            logger.debug("Достигнут конец списка пользователей")
             break
             
         start = next_page
     
-    print(f"Получено всего {len(all_users)} пользователей")
+    logger.info(f"Получено всего {len(all_users)} пользователей")
     return all_users
 
 
@@ -151,7 +154,7 @@ async def fetch_active_users_from_bitrix(portal_name, user_id, token, department
     if department_id:
         filters['UF_DEPARTMENT'] = department_id
     
-    print(f"Получаю активных сотрудников" + (f" из отдела {department_id}" if department_id else ""))
+    logger.info(f"Получаю активных сотрудников" + (f" из отдела {department_id}" if department_id else ""))
     
     return await fetch_all_users_from_bitrix(
         portal_name, user_id, token, 
@@ -176,10 +179,10 @@ async def fetch_users_for_portal(portal_url, filters=None):
         user_id = parts[4]  # 9
         token = parts[5]  # token123
     except Exception as e:
-        print(f"Ошибка при парсинге URL портала: {e}")
+        logger.error(f"Ошибка при парсинге URL портала: {e}")
         return {}
     
-    print(f"Получаю пользователей для портала {portal_name}")
+    logger.info(f"Получаю пользователей для портала {portal_name}")
     
     if filters is None:
         # По умолчанию получаем только активных сотрудников
@@ -205,17 +208,17 @@ async def fetch_users_from_all_portals(filters=None, max_concurrent_portals=3, r
     :param retries: Количество повторных попыток при ошибке
     :return: Словарь {portal_name: {"users": [...]}} со всеми пользователями
     """
-    print("Получаю пользователей из всех порталов")
+    logger.info("Получаю пользователей из всех порталов")
     
     # Загружаем конфигурацию порталов
     config = load_portals_config()
     portals = config.get('portals', [])
     
     if not portals:
-        print("Нет порталов в конфигурации")
+        logger.warning("Нет порталов в конфигурации")
         return {}
     
-    print(f"Найдено {len(portals)} порталов, максимум одновременных запросов: {max_concurrent_portals}")
+    logger.info(f"Найдено {len(portals)} порталов, максимум одновременных запросов: {max_concurrent_portals}")
     
     # Создаем семафор для ограничения количества одновременных запросов
     semaphore = asyncio.Semaphore(max_concurrent_portals)
@@ -223,7 +226,7 @@ async def fetch_users_from_all_portals(filters=None, max_concurrent_portals=3, r
     async def fetch_portal_with_semaphore(portal_url):
         """Получает пользователей портала с ограничением семафора и повторными попытками"""
         async with semaphore:
-            print(f"Обрабатываю портал: {portal_url}")
+            logger.debug(f"Обрабатываю портал: {portal_url}")
             
             for attempt in range(retries + 1):
                 try:
@@ -234,7 +237,7 @@ async def fetch_users_from_all_portals(filters=None, max_concurrent_portals=3, r
                     result = await fetch_users_for_portal(portal_url, filters)
                     if result:  # Успешный результат
                         if attempt > 0:
-                            print(f"Успешно получены пользователи из {portal_url} с попытки {attempt + 1}")
+                            logger.debug(f"Успешно получены пользователи из {portal_url} с попытки {attempt + 1}")
                         return result
                     else:
                         raise Exception("Пустой результат от портала")
@@ -242,11 +245,11 @@ async def fetch_users_from_all_portals(filters=None, max_concurrent_portals=3, r
                 except Exception as e:
                     if attempt < retries:
                         retry_delay = request_delay * (2 ** attempt)  # Экспоненциальная задержка
-                        print(f"Ошибка при получении пользователей из {portal_url} (попытка {attempt + 1}/{retries + 1}): {e}")
-                        print(f"Повторная попытка через {retry_delay:.1f} секунд...")
+                        logger.warning(f"Ошибка при получении пользователей из {portal_url} (попытка {attempt + 1}/{retries + 1}): {e}")
+                        logger.debug(f"Повторная попытка через {retry_delay:.1f} секунд...")
                         await asyncio.sleep(retry_delay)
                     else:
-                        print(f"Не удалось получить пользователей из {portal_url} после {retries + 1} попыток: {e}")
+                        logger.error(f"Не удалось получить пользователей из {portal_url} после {retries + 1} попыток: {e}")
                         return {}
     
     # Создаем задачи для всех порталов
@@ -267,13 +270,13 @@ async def fetch_users_from_all_portals(filters=None, max_concurrent_portals=3, r
     all_users = {}
     for i, result in enumerate(results):
         if isinstance(result, Exception):
-            print(f"Ошибка при обработке портала {portals[i]}: {result}")
+            logger.error(f"Ошибка при обработке портала {portals[i]}: {result}")
         elif isinstance(result, dict):
             all_users.update(result)
     
     # Подсчет общего количества пользователей
     total_users = sum(len(portal_data.get("users", [])) for portal_data in all_users.values())
-    print(f"Получено всего {total_users} пользователей из {len(all_users)} порталов")
+    logger.info(f"Получено всего {total_users} пользователей из {len(all_users)} порталов")
     
     return all_users
 
@@ -290,14 +293,15 @@ async def add_users_to_records(records_dict, max_concurrent_portals=3, request_d
     :param retries: Количество повторных попыток при ошибке
     :return: Обогащенный словарь с добавленным ключом 'users'
     """
-    print("Обогащаю записи данными пользователей")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Обогащение данными пользователей ===")
+    logger.info("Обогащаю записи данными пользователей")
     
     # Загружаем конфигурацию порталов
     config = load_portals_config()
     portals = config.get('portals', [])
     
     if not portals:
-        print("Нет порталов в конфигурации")
+        logger.warning("Нет порталов в конфигурации")
         return records_dict
     
     # Создаем маппинг portal_name -> portal_info
@@ -316,14 +320,14 @@ async def add_users_to_records(records_dict, max_concurrent_portals=3, request_d
             token = parts[5]  # token123
             portal_info_map[portal_name] = (user_id, token)
         except Exception as e:
-            print(f"Ошибка при парсинге URL портала {portal_config}: {e}")
+            logger.error(f"Ошибка при парсинге URL портала {portal_config}: {e}")
     
     result_dict = records_dict.copy()
     
     # Обрабатываем каждый портал
     for portal_name, portal_data in records_dict.items():
         if portal_name not in portal_info_map:
-            print(f"Портал {portal_name} не найден в конфигурации, пропускаю")
+            logger.warning(f"Портал {portal_name} не найден в конфигурации, пропускаю")
             result_dict[portal_name]['users'] = []
             continue
         
@@ -331,7 +335,7 @@ async def add_users_to_records(records_dict, max_concurrent_portals=3, request_d
         
         # Проверяем, есть ли записи вообще
         if not records:
-            print(f"Нет записей для портала {portal_name}, пропускаю запросы к API")
+            logger.info(f"Нет записей для портала {portal_name}, пропускаю запросы к API")
             result_dict[portal_name]['users'] = []
             continue
         
@@ -345,18 +349,18 @@ async def add_users_to_records(records_dict, max_concurrent_portals=3, request_d
                 user_ids.add(str(record_user_id))  # Приводим к строке для единообразия
         
         if not user_ids:
-            print(f"Нет user_id в записях для портала {portal_name}, пропускаю запросы к API")
+            logger.info(f"Нет user_id в записях для портала {portal_name}, пропускаю запросы к API")
             result_dict[portal_name]['users'] = []
             continue
         
-        print(f"Найдено {len(user_ids)} уникальных пользователей в записях портала {portal_name}")
+        logger.info(f"Найдено {len(user_ids)} уникальных пользователей в записях портала {portal_name}")
         
         # Получаем всех активных пользователей портала
         try:
             all_portal_users = await fetch_active_users_from_bitrix(portal_name, user_id, token)
             
             if not all_portal_users:
-                print(f"Не удалось получить пользователей для портала {portal_name}")
+                logger.error(f"Не удалось получить пользователей для портала {portal_name}")
                 result_dict[portal_name]['users'] = []
                 continue
             
@@ -373,18 +377,19 @@ async def add_users_to_records(records_dict, max_concurrent_portals=3, request_d
                     filtered_users.append(user_data)
             
             result_dict[portal_name]['users'] = filtered_users
-            print(f"Добавлено {len(filtered_users)} пользователей для портала {portal_name}")
+            logger.info(f"Добавлено {len(filtered_users)} пользователей для портала {portal_name}")
             
         except Exception as e:
-            print(f"Ошибка при получении пользователей для портала {portal_name}: {e}")
+            logger.error(f"Ошибка при получении пользователей для портала {portal_name}: {e}")
             result_dict[portal_name]['users'] = []
     
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Обогащение данными пользователей ===")
     return result_dict
 
 
 if __name__ == "__main__":
     async def test():
-        print("Тестирую обогащение записей данными пользователей")
+        logger.info("Тестирую обогащение записей данными пользователей")
         
         # Жестко заданные тестовые данные (как после Шага 4)
         test_records = {
@@ -446,14 +451,14 @@ if __name__ == "__main__":
             }
         }
         
-        print("Используются жестко заданные тестовые данные")
-        print("Проверяю оптимизацию: пропуск пустых записей и записей без user_id")
+        logger.info("Используются жестко заданные тестовые данные")
+        logger.info("Проверяю оптимизацию: пропуск пустых записей и записей без user_id")
         
         # Тестируем функцию обогащения
         enriched_records = await add_users_to_records(test_records)
         
         # Сохраняем результат
         save_debug_json(enriched_records, "enriched_with_users_test")
-        print("\nРезультат сохранен в json_tests/enriched_with_users_test.json")
+        logger.info("Результат сохранен в json_tests/enriched_with_users_test.json")
     
     asyncio.run(test())

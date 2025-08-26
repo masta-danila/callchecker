@@ -1,6 +1,14 @@
 import json
 import os
+import sys
 from datetime import datetime
+
+# Добавляем корневую папку в путь для импорта модулей
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from logger_config import setup_logger
+
+logger = setup_logger('debug_utils', 'logs/debug_utils.log')
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -39,10 +47,10 @@ def save_debug_json(data_dict, variable_name):
                 cls=DateTimeEncoder
             )
         
-        print(f"✅ Отладочные данные сохранены: {file_path}")
+        logger.debug(f"Отладочные данные сохранены: {file_path}")
         
     except Exception as e:
-        print(f"❌ Ошибка при сохранении отладочных данных: {e}")
+        logger.error(f"Ошибка при сохранении отладочных данных: {e}")
 
 
 def save_multiple_debug_json(**kwargs):
@@ -88,8 +96,8 @@ def print_json_safe(data, title="Debug Data"):
         title: Заголовок для вывода
     """
     try:
-        print(f"\n=== {title} ===")
-        print(json.dumps(data, indent=4, ensure_ascii=False, cls=DateTimeEncoder))
-        print("=" * (len(title) + 8))
+        logger.debug(f"\n=== {title} ===")
+        logger.debug(json.dumps(data, indent=4, ensure_ascii=False, cls=DateTimeEncoder))
+        logger.debug("=" * (len(title) + 8))
     except Exception as e:
-        print(f"❌ Ошибка при выводе {title}: {e}")
+        logger.error(f"Ошибка при выводе {title}: {e}")

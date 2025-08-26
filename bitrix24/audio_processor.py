@@ -6,7 +6,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from audio_metadata import get_audio_metadata
+from logger_config import setup_logger
 from upload import upload_file_to_storage_async
+
+logger = setup_logger('audio_processor', 'logs/audio_processor.log')
 
 
 async def process_single_audio_file(file_path: str, retries: int = 3, retry_delay: float = 1.0) -> dict:
@@ -19,18 +22,18 @@ async def process_single_audio_file(file_path: str, retries: int = 3, retry_dela
     :return: Словарь с audio_metadata
     """
     try:
-        print(f"Обрабатываю файл: {os.path.basename(file_path)}")
+        logger.debug(f"Обрабатываю файл: {os.path.basename(file_path)}")
         
         # Проверяем существование файла
         if not os.path.exists(file_path):
-            print(f"Файл не найден: {file_path}")
+            logger.error(f"Файл не найден: {file_path}")
             return {"error": f"Файл не найден: {file_path}"}
         
         # Получаем метаданные аудио
         metadata = get_audio_metadata(file_path)
         
         if "error" in metadata:
-            print(f"Ошибка получения метаданных: {metadata['error']}")
+            logger.error(f"Ошибка получения метаданных: {metadata['error']}")
             return metadata
         
         # Загружаем файл в облако с повторными попытками
@@ -40,16 +43,16 @@ async def process_single_audio_file(file_path: str, retries: int = 3, retry_dela
         for attempt in range(retries):
             try:
                 uri = await upload_file_to_storage_async(file_path)
-                print(f"Файл загружен в облако: {uri}")
+                logger.debug(f"Файл загружен в облако: {uri}")
                 break
             except Exception as e:
                 last_error = e
-                print(f"Попытка {attempt + 1}/{retries} не удалась: {e}")
+                logger.warning(f"Попытка {attempt + 1}/{retries} не удалась: {e}")
                 if attempt < retries - 1:
                     await asyncio.sleep(retry_delay)
         
         if uri is None:
-            print(f"Ошибка загрузки файла после {retries} попыток: {last_error}")
+            logger.error(f"Ошибка загрузки файла после {retries} попыток: {last_error}")
             return {"error": f"Ошибка загрузки файла после {retries} попыток: {last_error}"}
         
         # Добавляем URI к метаданным
@@ -59,7 +62,7 @@ async def process_single_audio_file(file_path: str, retries: int = 3, retry_dela
         return metadata
         
     except Exception as e:
-        print(f"Ошибка обработки файла {file_path}: {e}")
+        logger.error(f"Ошибка обработки файла {file_path}: {e}")
         return {"error": f"Ошибка обработки файла: {e}"}
 
 
@@ -74,7 +77,8 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
     :param retry_delay: Задержка между попытками в секундах
     :return: Обновленный словарь с audio_metadata
     """
-    print("Начинаю обработку аудио файлов")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Обработка аудио файлов ===")
+    logger.info("Начинаю обработку аудио файлов")
     
     # Создаем копию исходного словаря
     result_dict = {}
@@ -89,14 +93,14 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
             return metadata
     
     for portal_name, portal_data in records_dict.items():
-        print(f"\nОбрабатываю портал: {portal_name}")
+        logger.info(f"Обрабатываю портал: {portal_name}")
         
         # Копируем данные портала
         result_dict[portal_name] = portal_data.copy()
         
         records = portal_data.get('records', [])
         if not records:
-            print(f"Нет записей для портала {portal_name}")
+            logger.info(f"Нет записей для портала {portal_name}")
             continue
         
         # Собираем задачи для обработки файлов
@@ -106,7 +110,7 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
         for i, record in enumerate(records):
             record_id = record.get('id')
             if not record_id:
-                print(f"Запись без ID, пропускаю: {record}")
+                logger.warning(f"Запись без ID, пропускаю: {record}")
                 continue
             
             # Формируем путь к файлу
@@ -117,17 +121,17 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
                 tasks.append(task)
                 record_indices.append(i)
             else:
-                print(f"Файл не найден: {file_path}")
+                logger.warning(f"Файл не найден: {file_path}")
                 # Добавляем ошибку в метаданные
                 result_dict[portal_name]['records'][i]['audio_metadata'] = {
                     "error": f"Файл не найден: {file_path}"
                 }
         
         if not tasks:
-            print(f"Нет файлов для обработки в портале {portal_name}")
+            logger.info(f"Нет файлов для обработки в портале {portal_name}")
             continue
         
-        print(f"Запускаю обработку {len(tasks)} файлов для портала {portal_name}")
+        logger.info(f"Запускаю обработку {len(tasks)} файлов для портала {portal_name}")
         
         # Выполняем все задачи параллельно
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -136,7 +140,7 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
         successful_count = 0
         for i, (result, record_index) in enumerate(zip(results, record_indices)):
             if isinstance(result, Exception):
-                print(f"Исключение при обработке файла: {result}")
+                logger.error(f"Исключение при обработке файла: {result}")
                 result_dict[portal_name]['records'][record_index]['audio_metadata'] = {
                     "error": f"Исключение: {result}"
                 }
@@ -145,9 +149,10 @@ async def process_audio_files_async(records_dict: dict, max_concurrent_files: in
                 if "error" not in result:
                     successful_count += 1
         
-        print(f"Портал {portal_name}: {successful_count}/{len(tasks)} файлов успешно обработано")
+        logger.info(f"Портал {portal_name}: {successful_count}/{len(tasks)} файлов успешно обработано")
     
-    print("Обработка аудио файлов завершена")
+    logger.info("Обработка аудио файлов завершена")
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Обработка аудио файлов ===")
     return result_dict
 
 
@@ -185,9 +190,9 @@ if __name__ == "__main__":
         from debug_utils import save_debug_json
         save_debug_json(processed_records, "audio_processed_test")
         
-        print("Тест завершен. Параметры были:")
-        print(f"- max_concurrent_files: 5")
-        print(f"- retries: 2") 
-        print(f"- retry_delay: 0.5 сек")
+        logger.info("Тест завершен. Параметры были:")
+        logger.info(f"- max_concurrent_files: 5")
+        logger.info(f"- retries: 2") 
+        logger.info(f"- retry_delay: 0.5 сек")
     
     asyncio.run(test())

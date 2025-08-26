@@ -1,4 +1,8 @@
 from db_client import get_db_client
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('db_create_table', 'logs/db_create_table.log')
 
 
 def create_tables(*table_names):
@@ -49,13 +53,13 @@ def create_tables(*table_names):
             with conn.cursor() as cur:
                 # Проверка или создание ENUM типов
                 cur.execute(create_status_enum_query)
-                print("Тип status_enum проверен или создан.")
+                logger.debug("Тип status_enum проверен или создан.")
                 cur.execute(create_llm_type_enum_query)
-                print("Тип llm_type_enum проверен или создан.")
+                logger.debug("Тип llm_type_enum проверен или создан.")
                 cur.execute(create_entity_type_enum_query)
-                print("Тип crm_entity_type_enum проверен или создан.")
+                logger.debug("Тип crm_entity_type_enum проверен или создан.")
                 cur.execute(create_call_type_enum_query)
-                print("Тип call_type_enum проверен или создан.")
+                logger.debug("Тип call_type_enum проверен или создан.")
 
                 for table_name in table_names:
                     # -------------------------------------------
@@ -85,7 +89,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_entities_table)
-                    print(f"Таблица {table_name}_entities успешно создана.")
+                    logger.info(f"Таблица {table_name}_entities успешно создана.")
 
                     # -------------------------------------------
                     # Создаём таблицу пользователей (users)
@@ -99,7 +103,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_users_table)
-                    print(f"Таблица {table_name}_users успешно создана.")
+                    logger.info(f"Таблица {table_name}_users успешно создана.")
 
                     # -------------------------------------------
                     # Создаём основную таблицу с внешним ключом на таблицу сущностей
@@ -127,7 +131,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_main_table_query)
-                    print(f"Таблица {table_name} успешно создана.")
+                    logger.info(f"Таблица {table_name} успешно создана.")
 
                     # -------------------------------------------
                     # Создаём таблицу групп критериев
@@ -139,7 +143,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_criterion_groups_table)
-                    print(f"Таблица {table_name}_criterion_groups успешно создана.")
+                    logger.info(f"Таблица {table_name}_criterion_groups успешно создана.")
 
                     # -------------------------------------------
                     # Создаём таблицу критериев (добавлено поле name)
@@ -161,7 +165,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_criteria_table)
-                    print(f"Таблица {table_name}_criteria успешно создана.")
+                    logger.info(f"Таблица {table_name}_criteria успешно создана.")
 
                     # -------------------------------------------
                     # Создаём таблицу категорий (добавлено поле name)
@@ -174,7 +178,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_categories_table)
-                    print(f"Таблица {table_name}_categories успешно создана.")
+                    logger.info(f"Таблица {table_name}_categories успешно создана.")
 
                     # -------------------------------------------
                     # Создаём связующую таблицу "категории - критерий"
@@ -193,7 +197,7 @@ def create_tables(*table_names):
                         );
                     """
                     cur.execute(create_categories_criteria_table)
-                    print(f"Таблица {table_name}_categories_criteria успешно создана.")
+                    logger.info(f"Таблица {table_name}_categories_criteria успешно создана.")
 
                     # -------------------------------------------
                     # Создаём индексы для оптимизации
@@ -233,12 +237,12 @@ def create_tables(*table_names):
 
                     """
                     cur.execute(create_indexes_query)
-                    print(f"Индексы для {table_name} успешно созданы.")
+                    logger.info(f"Индексы для {table_name} успешно созданы.")
                     
-                    print(f"Все таблицы и индексы для {table_name} успешно созданы.")
+                    logger.info(f"Все таблицы и индексы для {table_name} успешно созданы.")
 
     except Exception as e:
-        print(f"Ошибка при создании таблиц: {e}")
+        logger.error(f"Ошибка при создании таблиц: {e}")
         raise
 
 

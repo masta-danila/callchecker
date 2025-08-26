@@ -7,6 +7,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db_client import get_db_client
 from debug_utils import save_debug_json
+from logger_config import setup_logger
+
+logger = setup_logger('users_db_manager', 'logs/users_db_manager.log')
 
 
 def upsert_users_to_db(portal_name: str, users: list) -> dict:
@@ -18,10 +21,10 @@ def upsert_users_to_db(portal_name: str, users: list) -> dict:
     :return: Словарь {user_id: user_id} (для совместимости)
     """
     if not users:
-        print(f"Нет пользователей для обновления в портале {portal_name}")
+        logger.info(f"Нет пользователей для обновления в портале {portal_name}")
         return {}
     
-    print(f"Обновляю {len(users)} пользователей в БД для портала {portal_name}")
+    logger.info(f"Обновляю {len(users)} пользователей в БД для портала {portal_name}")
     
     user_id_mapping = {}
     
@@ -35,14 +38,14 @@ def upsert_users_to_db(portal_name: str, users: list) -> dict:
                     uf_department = user.get('UF_DEPARTMENT')
                     
                     if not user_id:
-                        print(f"Пользователь без ID, пропускаю: {user}")
+                        logger.warning(f"Пользователь без ID, пропускаю: {user}")
                         continue
                     
                     # Преобразуем user_id в integer
                     try:
                         user_id_int = int(user_id)
                     except (ValueError, TypeError):
-                        print(f"Некорректный user_id: {user_id}, пропускаю")
+                        logger.warning(f"Некорректный user_id: {user_id}, пропускаю")
                         continue
                     
                     # UPSERT: INSERT ... ON CONFLICT DO UPDATE
@@ -78,13 +81,13 @@ def upsert_users_to_db(portal_name: str, users: list) -> dict:
                     if result:
                         internal_id = result[0]
                         user_id_mapping[user_id] = internal_id
-                        print(f"Пользователь {user_id} ({name} {last_name}) обновлен, ID: {internal_id}")
+                        logger.debug(f"Пользователь {user_id} ({name} {last_name}) обновлен, ID: {internal_id}")
                 
                 conn.commit()
-                print(f"Успешно обновлено {len(user_id_mapping)} пользователей для портала {portal_name}")
+                logger.info(f"Успешно обновлено {len(user_id_mapping)} пользователей для портала {portal_name}")
                 
             except Exception as e:
-                print(f"Ошибка при обновлении пользователей для портала {portal_name}: {e}")
+                logger.error(f"Ошибка при обновлении пользователей для портала {portal_name}: {e}")
                 conn.rollback()
                 return {}
     
@@ -98,32 +101,34 @@ async def update_users_in_database(records_dict: dict):
     
     :param records_dict: Словарь с данными после Шага 5 (содержит ключ 'users')
     """
-    print("Начинаю обновление пользователей в БД")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Обновление пользователей в БД ===")
+    logger.info("Начинаю обновление пользователей в БД")
     
     for portal_name, portal_data in records_dict.items():
-        print(f"\nОбрабатываю портал: {portal_name}")
+        logger.info(f"Обрабатываю портал: {portal_name}")
         
         # Получаем список пользователей
         users = portal_data.get('users', [])
         
         if not users:
-            print(f"Нет пользователей для портала {portal_name}")
+            logger.info(f"Нет пользователей для портала {portal_name}")
             continue
         
         # Обновляем пользователей в БД
         user_mapping = upsert_users_to_db(portal_name, users)
         
         if user_mapping:
-            print(f"Пользователи для портала {portal_name} успешно обновлены в БД")
+            logger.info(f"Пользователи для портала {portal_name} успешно обновлены в БД")
         else:
-            print(f"Не удалось обновить пользователей для портала {portal_name}")
+            logger.error(f"Не удалось обновить пользователей для портала {portal_name}")
     
-    print("Обновление пользователей в БД завершено")
+    logger.info("Обновление пользователей в БД завершено")
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Обновление пользователей в БД ===")
 
 
 if __name__ == "__main__":
     async def test():
-        print("Тестирую обновление пользователей в БД")
+        logger.info("Тестирую обновление пользователей в БД")
         
         # Жестко заданные тестовые данные (как после Шага 5)
         test_records = {
@@ -161,11 +166,11 @@ if __name__ == "__main__":
             }
         }
         
-        print("Используются жестко заданные тестовые данные")
+        logger.info("Используются жестко заданные тестовые данные")
         
         # Тестируем функцию обновления
         await update_users_in_database(test_records)
         
-        print("Проверьте БД для подтверждения обновления пользователей")
+        logger.info("Проверьте БД для подтверждения обновления пользователей")
     
     asyncio.run(test())

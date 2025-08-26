@@ -8,6 +8,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bitrix_entity_fetcher import fetch_multiple_entities
 from debug_utils import save_debug_json
+from logger_config import setup_logger
+
+logger = setup_logger('entity_fetcher', 'logs/entity_fetcher.log')
 
 
 def load_portals_config():
@@ -22,7 +25,7 @@ def load_portals_config():
         with open(config_path, 'r', encoding='utf-8') as file:
             return json.load(file)
     except Exception as e:
-        print(f"Ошибка при загрузке конфигурации порталов: {e}")
+        logger.error(f"Ошибка при загрузке конфигурации порталов: {e}")
         return {}
 
 
@@ -38,7 +41,7 @@ def extract_portal_info(portal_url):
         token = parts[5]  # nhrww3tccn7ep547
         return portal_name, user_id, token
     except Exception as e:
-        print(f"Ошибка при парсинге URL портала: {e}")
+        logger.error(f"Ошибка при парсинге URL портала: {e}")
         return None, None, None
 
 
@@ -65,14 +68,15 @@ async def fetch_entities_for_records(
     :param retries: Количество повторных попыток
     :return: Словарь с добавленными данными сущностей
     """
-    print("Шаг 3: Получаю данные сущностей из Bitrix24")
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Получение данных сущностей из Bitrix24 ===")
+    logger.info("Шаг 3: Получаю данные сущностей из Bitrix24")
     
     # Загружаем конфигурацию порталов
     config = load_portals_config()
     portals = config.get('portals', [])
     
     if not portals:
-        print("Нет порталов в конфигурации")
+        logger.warning("Нет порталов в конфигурации")
         return records
     
     # Создаем маппинг portal_name -> portal_info
@@ -92,10 +96,10 @@ async def fetch_entities_for_records(
     
     # Обрабатываем каждый портал
     for portal_name, portal_data in records.items():
-        print(f"Обрабатываю сущности для портала {portal_name}")
+        logger.info(f"Обрабатываю сущности для портала {portal_name}")
         
         if portal_name not in portal_info_map:
-            print(f"Портал {portal_name} не найден в конфигурации, пропускаю")
+            logger.warning(f"Портал {portal_name} не найден в конфигурации, пропускаю")
             result_records[portal_name] = portal_data
             continue
         
@@ -116,7 +120,7 @@ async def fetch_entities_for_records(
             if entity_type_id:
                 entities_to_fetch.add((entity_type_id, int(entity_id)))
         
-        print(f"Найдено {len(entities_to_fetch)} уникальных сущностей для загрузки")
+        logger.info(f"Найдено {len(entities_to_fetch)} уникальных сущностей для загрузки")
         
         # Получаем данные сущностей
         entities_data = {}
@@ -124,7 +128,7 @@ async def fetch_entities_for_records(
             entities_data = await fetch_multiple_entities(
                 portal_name, user_id, token, list(entities_to_fetch)
             )
-            print(f"Успешно загружено данных о {len(entities_data)} сущностях")
+            logger.info(f"Успешно загружено данных о {len(entities_data)} сущностях")
         
         # Формируем список сущностей для этого портала
         portal_entities = []
@@ -143,6 +147,7 @@ async def fetch_entities_for_records(
             "entities": portal_entities  # Список сущностей
         }
     
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Получение данных сущностей из Bitrix24 ===")
     return result_records
 
 
@@ -201,7 +206,7 @@ if __name__ == "__main__":
             }
         }
         
-        print(f"Тестирую на {len(test_records['advertpro']['records'])} записях")
+        logger.info(f"Тестирую на {len(test_records['advertpro']['records'])} записях")
         
         # Запускаем получение данных сущностей
         result = await fetch_entities_for_records(
@@ -214,6 +219,6 @@ if __name__ == "__main__":
         # Сохраняем результат для отладки
         save_debug_json(result, "test_entity_fetching")
         
-        print("Тестирование завершено, результат сохранен в bitrix24/json_tests/test_entity_fetching.json")
+        logger.info("Тестирование завершено, результат сохранен в bitrix24/json_tests/test_entity_fetching.json")
     
     asyncio.run(test())

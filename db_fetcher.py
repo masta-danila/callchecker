@@ -1,6 +1,9 @@
 import json
 import os
 from db_client import get_db_client
+from logger_config import setup_logger
+
+logger = setup_logger('db_fetcher', 'logs/db_fetcher.log')
 
 
 def get_tables_with_status_column():
@@ -33,7 +36,7 @@ def fetch_data_with_portal_settings(status: str = None, fields: list[str] = None
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
     except Exception as e:
-        print(f"Ошибка чтения конфигурации порталов: {e}")
+        logger.error(f"Ошибка чтения конфигурации порталов: {e}")
         return {}
 
     default_days_back = config.get('default_settings', {}).get('days_back', 3)
@@ -132,7 +135,7 @@ def fetch_data_with_portal_settings(status: str = None, fields: list[str] = None
                     except:
                         result[table]["entities"] = []
 
-                print(f"Таблица {table}: загружено {len(records)} записей за последние {portal_days_back} дней")
+                logger.info(f"Таблица {table}: загружено {len(records)} записей за последние {portal_days_back} дней")
 
     return result
 
@@ -294,4 +297,4 @@ if __name__ == "__main__":
         status="ready",
         fields=["id", "dialogue", "entity_id", "data"],
         analytics_mode=True)
-    print(json.dumps(records, indent=4, ensure_ascii=False))
+    logger.info(json.dumps(records, indent=4, ensure_ascii=False))
