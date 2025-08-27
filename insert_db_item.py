@@ -1,6 +1,10 @@
 import json
 from datetime import datetime
 from db_client import get_db_client
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('insert_db_item', 'logs/insert_db_item.log')
 
 
 def insert_data(table_name: str,
@@ -64,11 +68,11 @@ def insert_data(table_name: str,
         cursor.execute(query, params)
         conn.commit()
 
-        print(f"Запись успешно добавлена в таблицу {table_name}: "
-              f"ID={file_name}, URI={uri}, user_id={user_id}, entity_id={entity_id}")
+        logger.info(f"Запись успешно добавлена в таблицу {table_name}: "
+                    f"ID={file_name}, URI={uri}, user_id={user_id}, entity_id={entity_id}")
     except Exception as e:
         conn.rollback()
-        print(f"Ошибка при добавлении записи: {e}")
+        logger.error(f"Ошибка при добавлении записи: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -99,17 +103,17 @@ def check_and_insert_entity(table_name: str, entity_id: int, entity_data: dict =
             data_json = json.dumps(entity_data) if entity_data else '{}'
             cursor.execute(insert_query, (entity_id, data_json, summary))
             conn.commit()
-            print(f"Сущность с id {entity_id} добавлена в таблицу {table_name}_entities.")
+            logger.info(f"Сущность с id {entity_id} добавлена в таблицу {table_name}_entities.")
         else:
             # Если запись существует, обновляем данные и summary
             update_query = f"UPDATE {table_name}_entities SET data = %s, summary = %s WHERE id = %s"
             data_json = json.dumps(entity_data) if entity_data else '{}'
             cursor.execute(update_query, (data_json, summary, entity_id))
             conn.commit()
-            print(f"Сущность с id {entity_id} обновлена в таблице {table_name}_entities.")
+            logger.info(f"Сущность с id {entity_id} обновлена в таблице {table_name}_entities.")
     except Exception as e:
         conn.rollback()
-        print(f"Ошибка при проверке/добавлении сущности: {e}")
+        logger.error(f"Ошибка при проверке/добавлении сущности: {e}")
     finally:
         cursor.close()
         conn.close()

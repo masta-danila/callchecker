@@ -104,7 +104,7 @@ async def process_dialogs(
             result = results[index]
             if isinstance(result, Exception) or result is None:
                 failed_requests += 1
-                print(f"Ошибка при исправлении диалога {row['id']}")
+                logger.error(f"Ошибка при исправлении диалога {row['id']}")
             else:
                 # Обновляем текст диалога результатом анализа
                 row["dialogue"] = result["content"]
@@ -117,7 +117,7 @@ async def process_dialogs(
         processed_records[table] = {"records": processed_table}
 
     total_processed = sum(len(data["records"]) for data in processed_records.values())
-    print(f"Успешно исправлено: {total_processed}, Ошибок: {failed_requests}")
+    logger.info(f"Успешно исправлено: {total_processed}, Ошибок: {failed_requests}")
 
     return processed_records
 

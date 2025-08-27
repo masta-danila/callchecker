@@ -206,8 +206,8 @@ async def classify_dialogs(
     error_count = sum(1 for r in results if isinstance(r, Exception))
     success_count = total - error_count
 
-    print(f"Итог: обработано всего: {total}")
-    print(f"Успешно: {success_count}, Ошибок: {error_count}")
+    logger.info(f"Итог: обработано всего: {total}")
+    logger.info(f"Успешно: {success_count}, Ошибок: {error_count}")
 
     return data
 
@@ -493,4 +493,4 @@ if __name__ == "__main__":
         )
     )
     
-    print(json.dumps(updated_data, indent=4, ensure_ascii=False))
+    logger.debug(json.dumps(updated_data, indent=4, ensure_ascii=False))

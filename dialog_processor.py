@@ -1,5 +1,9 @@
 import asyncio
 from dialogue_recognizer import process_record  # Импорт функции из record_processor.py
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('dialog_processor', 'logs/dialog_processor.log')
 
 
 async def process_and_store_dialogs(
@@ -18,6 +22,7 @@ async def process_and_store_dialogs(
     :param retries: количество повторных попыток при возникновении ошибки
     :param request_delay: задержка (в секундах) между повторными попытками
     """
+    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Распознавание диалогов ===")
     semaphore = asyncio.Semaphore(max_concurrent_requests)
 
     async def sem_protected_process_record(record):
@@ -28,13 +33,13 @@ async def process_and_store_dialogs(
                     return await process_record(record)
                 except Exception as e:
                     if attempt < retries - 1:
-                        print(
+                        logger.warning(
                             f"Ошибка при распознавании записи (id={record.get('id', 'unknown')}), "
                             f"попытка {attempt + 1} из {retries}: {e}"
                         )
                         await asyncio.sleep(request_delay)
                     else:
-                        print(
+                        logger.error(
                             f"Не удалось распознать запись (id={record.get('id', 'unknown')}) "
                             f"после {retries} попыток. Ошибка: {e}"
                         )
@@ -60,6 +65,7 @@ async def process_and_store_dialogs(
                 filtered_data[category] = {"records": []}
             filtered_data[category]["records"].append(processed_record)
 
+    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Распознавание диалогов ===")
     return filtered_data
 
 if __name__ == "__main__":
@@ -82,4 +88,4 @@ if __name__ == "__main__":
         )
     )
 
-    print("Обработанные записи:", updated_data_records)
+    logger.debug(f"Обработанные записи: {len(updated_data_records)} записей")

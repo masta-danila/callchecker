@@ -33,7 +33,6 @@ def clean_audio_files_for_portal(portal_name: str):
 
 async def cleanup_audio_files_after_db_upload(db_stats_dict: dict):
     """Очищает аудиофайлы для порталов с успешной загрузкой в БД"""
-    logger.info("=== НАЧИНАЮ ОБРАБОТКУ: Очистка аудиофайлов ===")
     logger.info("Очищаю аудиофайлы после загрузки в БД")
     
     for portal_name, portal_data in db_stats_dict.items():
@@ -46,7 +45,6 @@ async def cleanup_audio_files_after_db_upload(db_stats_dict: dict):
             logger.warning(f"Портал {portal_name}: есть ошибки - файлы НЕ удаляю")
     
     logger.info("Очистка завершена")
-    logger.info("=== ЗАВЕРШАЮ ОБРАБОТКУ: Очистка аудиофайлов ===")
 
 
 if __name__ == "__main__":

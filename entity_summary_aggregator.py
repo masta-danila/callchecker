@@ -1,5 +1,9 @@
 import asyncio
 from sum_texts import sum_text_blocks
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('entity_summary_aggregator', 'logs/entity_summary_aggregator.log')
 
 
 async def aggregate_entity_summaries(
@@ -72,7 +76,7 @@ async def aggregate_entity_summaries(
             
             # Если есть что агрегировать, добавляем задачу
             if len(summaries_to_aggregate) > 1:  # Только если больше одного summary
-                print(f"Планирую агрегацию summary для сущности {entity_id} в таблице {table_name}: {len(summaries_to_aggregate)} summary")
+                logger.info(f"Планирую агрегацию summary для сущности {entity_id} в таблице {table_name}: {len(summaries_to_aggregate)} summary")
                 tasks.append(_update_entity_summary(
                     entity, summaries_to_aggregate, 
                     max_text_size, retries, request_delay
@@ -80,13 +84,13 @@ async def aggregate_entity_summaries(
             elif len(summaries_to_aggregate) == 1:
                 # Если только один summary, просто копируем его
                 entity["summary"] = summaries_to_aggregate[0]
-                print(f"Копирую единственный summary для сущности {entity_id}")
+                logger.info(f"Копирую единственный summary для сущности {entity_id}")
     
     # Выполняем все задачи параллельно
     if tasks:
-        print(f"Запускаю параллельную агрегацию summary для {len(tasks)} сущностей...")
+        logger.info(f"Запускаю параллельную агрегацию summary для {len(tasks)} сущностей...")
         await asyncio.gather(*tasks)
-        print("Параллельная агрегация summary завершена!")
+        logger.info("Параллельная агрегация summary завершена!")
     
     return data_dict
 
@@ -118,15 +122,15 @@ async def _update_entity_summary(entity, summaries_to_aggregate, max_text_size, 
             
             # Обновляем summary сущности
             entity["summary"] = final_summary
-            print(f"[OK]   Entity={entity_id}, агрегация summary, попытка={attempt}")
+            logger.info(f"[OK]   Entity={entity_id}, агрегация summary, попытка={attempt}")
             break
             
         except Exception as e:
-            print(f"[ERR]  Entity={entity_id}, агрегация summary, попытка={attempt}: {e}")
+            logger.warning(f"[ERR]  Entity={entity_id}, агрегация summary, попытка={attempt}: {e}")
             if attempt < retries:
                 await asyncio.sleep(request_delay)
             else:
-                print(f"[FAIL] Entity={entity_id}, агрегация summary — исчерпаны все {retries} попыток")
+                logger.error(f"[FAIL] Entity={entity_id}, агрегация summary — исчерпаны все {retries} попыток")
                 # В случае неудачи оставляем первый summary или пустую строку
                 entity["summary"] = summaries_to_aggregate[0] if summaries_to_aggregate else ""
 
@@ -176,12 +180,12 @@ if __name__ == "__main__":
             }
         }
         
-        print("=== ТЕСТ: Агрегация summary сущностей ===")
+        logger.info("=== ТЕСТ: Агрегация summary сущностей ===")
         
         result = await aggregate_entity_summaries(test_data)
         
-        print("\n=== РЕЗУЛЬТАТ ===")
+        logger.info("\n=== РЕЗУЛЬТАТ ===")
         for entity in result["advertpro"]["entities"]:
-            print(f"Entity {entity['id']}: {entity.get('summary', 'НЕТ SUMMARY')}")
+            logger.info(f"Entity {entity['id']}: {entity.get('summary', 'НЕТ SUMMARY')}")
 
     asyncio.run(main())

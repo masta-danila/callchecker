@@ -1,6 +1,10 @@
 import json
 from db_client import get_db_client
 from insert_db_item import check_and_insert_entity
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('db_data_uploader', 'logs/db_data_uploader.log')
 
 
 def upload_records_from_dict(data_dict: dict, status: str):
@@ -101,12 +105,12 @@ def upload_full_data_from_dict(data_dict: dict, status: str):
     1. records в основные таблицы через upload_records_from_dict
     2. entities в таблицы {table_name}_entities через check_and_insert_entity
     """
-    print("Загружаю records в БД...")
+    logger.info("Загружаю records в БД...")
     # Извлекаем только records для загрузки в основные таблицы
     records_only = {table: data["records"] for table, data in data_dict.items() if "records" in data}
     upload_records_from_dict(records_only, status)
     
-    print("Загружаю entities в БД...")
+    logger.info("Загружаю entities в БД...")
     # Загружаем entities в таблицы entities
     for table_name, table_data in data_dict.items():
         if "entities" in table_data and table_data["entities"]:
@@ -116,9 +120,9 @@ def upload_full_data_from_dict(data_dict: dict, status: str):
                 entity_summary = entity.get("summary", "")
                 if entity_id:
                     check_and_insert_entity(table_name, entity_id, entity_data, entity_summary)
-            print(f"Загружено {len(table_data['entities'])} entities для таблицы {table_name}")
+            logger.info(f"Загружено {len(table_data['entities'])} entities для таблицы {table_name}")
     
-    print("Загрузка records и entities завершена!")
+    logger.info("Загрузка records и entities завершена!")
 
 
 # Пример использования
@@ -129,14 +133,14 @@ if __name__ == "__main__":
     with open('json_tests/final_records.json', 'r', encoding='utf-8') as f:
         dialogue_dict = json.load(f)
     
-    print("Загружены данные из final_records.json:")
+    logger.info("Загружены данные из final_records.json:")
     for table_name, table_data in dialogue_dict.items():
         records_count = len(table_data.get("records", []))
         entities_count = len(table_data.get("entities", []))
-        print(f"  {table_name}: {records_count} records, {entities_count} entities")
+        logger.info(f"  {table_name}: {records_count} records, {entities_count} entities")
     
     # Тест новой функции с полной структурой
-    print("\n" + "="*50)
-    print("ТЕСТ: upload_full_data_from_dict с реальными данными")
-    print("="*50)
+    logger.info("\n" + "="*50)
+    logger.info("ТЕСТ: upload_full_data_from_dict с реальными данными")
+    logger.info("="*50)
     upload_full_data_from_dict(dialogue_dict, status='ready')

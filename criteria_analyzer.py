@@ -334,4 +334,4 @@ if __name__ == "__main__":
                                                    max_retries=3,
                                                    retry_delay=1.0,
                                                    max_concurrent_requests=50))
-    print(json.dumps(updated_data, indent=4, ensure_ascii=False))
+    logger.debug(json.dumps(updated_data, indent=4, ensure_ascii=False))

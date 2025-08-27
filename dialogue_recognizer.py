@@ -1,6 +1,10 @@
 import recognition_by_uri
 import dialog_builder
 import asyncio
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('dialogue_recognizer', 'logs/dialogue_recognizer.log')
 
 
 async def process_record(record):
@@ -12,10 +16,10 @@ async def process_record(record):
 
     # Проверяем, что все необходимые поля присутствуют
     if not uri or not encoding or num_channels is None or not sample_rate_hertz:
-        print(f"Пропущена запись с неполными метаданными: {record}")
+        logger.warning(f"Пропущена запись с неполными метаданными: {record}")
         return None
 
-    print(f"Распознается файл: {uri}")
+    logger.info(f"Распознается файл: {uri}")
 
     try:
         raw_data = await recognition_by_uri.recognize_speech(
@@ -25,17 +29,17 @@ async def process_record(record):
             sample_rate_hertz
         )
     except Exception as e:
-        print(f"Ошибка при распознавании {uri}: {e}")
+        logger.error(f"Ошибка при распознавании {uri}: {e}")
         return None
     # print("Сырые данные:", raw_data)
 
     if not raw_data:
-        print(f"Не удалось получить сырые данные для URI: {uri}")
+        logger.warning(f"Не удалось получить сырые данные для URI: {uri}")
         return None
 
     dialogue = dialog_builder.build_dialog_from_response(raw_data)
     if not dialogue:
-        print(f"Не удалось построить диалог для URI: {uri}, устанавливаю пустой диалог")
+        logger.warning(f"Не удалось построить диалог для URI: {uri}, устанавливаю пустой диалог")
         dialogue = ""
         # Устанавливаем статус 'empty' для пустых диалогов
         record["status"] = "empty"
@@ -46,9 +50,9 @@ async def process_record(record):
     # Добавляем диалог в запись и возвращаем её (либо успешный, либо пустой)
     record["dialogue"] = dialogue
     if dialogue:
-        print(f"Диалог для URI {uri} успешно сохранен со статусом 'recognized'.")
+        logger.info(f"Диалог для URI {uri} успешно сохранен со статусом 'recognized'.")
     else:
-        print(f"Для URI {uri} установлен пустой диалог со статусом 'empty'.")
+        logger.info(f"Для URI {uri} установлен пустой диалог со статусом 'empty'.")
     return record
 
 
@@ -65,4 +69,4 @@ if __name__ == "__main__":
 
     # Запускаем асинхронную функцию через asyncio.run(...)
     result = asyncio.run(process_record(sample_record))
-    print(f"Результат: {result}")
+    logger.info(f"Результат: {result}")
