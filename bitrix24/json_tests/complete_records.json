@@ -2,109 +2,32 @@
     "advertpro": {
         "records": [
             {
-                "id": "call_495337",
-                "date": "2025-08-26T09:20:22+03:00",
-                "user_id": "11009",
-                "phone_number": "+79261120032",
-                "entity_id": "25887",
+                "id": "call_495813",
+                "date": "2025-08-28T10:38:43+03:00",
+                "user_id": "14629",
+                "phone_number": "+73433394935",
+                "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": null
             },
             {
-                "id": "call_495339",
-                "date": "2025-08-26T09:21:24+03:00",
-                "user_id": "11009",
-                "phone_number": "+79659492020",
-                "entity_id": "348177",
+                "id": "call_495815",
+                "date": "2025-08-28T10:41:04+03:00",
+                "user_id": "14629",
+                "phone_number": "+79828526550",
+                "entity_id": null,
                 "call_type": "1",
-                "crm_entity_type": "LEAD"
-            },
-            {
-                "id": "call_495341",
-                "date": "2025-08-26T09:29:09+03:00",
-                "user_id": "11009",
-                "phone_number": "79117395031",
-                "entity_id": "27687",
-                "call_type": "1",
-                "crm_entity_type": "CONTACT"
-            },
-            {
-                "id": "call_495345",
-                "date": "2025-08-26T09:47:33+03:00",
-                "user_id": "11943",
-                "phone_number": "+79031361868",
-                "entity_id": "24715",
-                "call_type": "2",
-                "crm_entity_type": "CONTACT"
-            },
-            {
-                "id": "call_495349",
-                "date": "2025-08-26T10:06:25+03:00",
-                "user_id": "11009",
-                "phone_number": "+74959959035",
-                "entity_id": "27147",
-                "call_type": "2",
-                "crm_entity_type": "CONTACT"
+                "crm_entity_type": null
             }
         ],
-        "entities": [
-            {
-                "entity_type_id": 1,
-                "entity_id": 348177,
-                "title": "ООО \"ГИП-Электро\"",
-                "name": "Александр",
-                "lastName": null,
-                "id": 33
-            },
-            {
-                "entity_type_id": 3,
-                "entity_id": 24715,
-                "title": null,
-                "name": "Олег",
-                "lastName": null,
-                "id": 14
-            },
-            {
-                "entity_type_id": 3,
-                "entity_id": 27147,
-                "title": null,
-                "name": "наталья",
-                "lastName": "(рабочий)",
-                "id": 8
-            },
-            {
-                "entity_type_id": 3,
-                "entity_id": 25887,
-                "title": null,
-                "name": "Сергей",
-                "lastName": null,
-                "id": 9
-            },
-            {
-                "entity_type_id": 3,
-                "entity_id": 27687,
-                "title": null,
-                "name": "Захриддин",
-                "lastName": null,
-                "id": 10
-            }
-        ],
+        "entities": [],
         "users": [
             {
-                "id": "11943",
-                "NAME": "Елизавета",
-                "LAST_NAME": "Карпова",
+                "id": "14629",
+                "NAME": "Анастасия",
+                "LAST_NAME": "Ставцева",
                 "UF_DEPARTMENT": [
-                    2663
-                ]
-            },
-            {
-                "id": "11009",
-                "NAME": "Сергей",
-                "LAST_NAME": "Конышев",
-                "UF_DEPARTMENT": [
-                    1223,
-                    2331
+                    1771
                 ]
             }
         ]
