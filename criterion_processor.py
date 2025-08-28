@@ -58,11 +58,11 @@ async def process_client_data(dialogue: str, data: dict, record_id: str = None) 
     criterion_id = data.get("id", "N/A")
     record_info = f"запись {record_id}" if record_id else "неизвестная запись"
     
-    logger.info(f"🔄 Начинаю обработку критерия '{criterion_name}' (ID: {criterion_id}) для {record_info}")
+    logger.info(f"Начинаю обработку критерия '{criterion_name}' (ID: {criterion_id}) для {record_info}")
 
     # Если оба флага False, запрос не выполняется.
     if not show_text and not eval_crit:
-        logger.info(f"⏭️  Пропускаю критерий '{criterion_name}' - флаги show_text и evaluate_criterion отключены")
+        logger.info(f"Пропускаю критерий '{criterion_name}' - флаги show_text и evaluate_criterion отключены")
         return {"text": "", "evaluation": None}
 
     description = data.get("prompt", "")
@@ -103,9 +103,9 @@ async def process_client_data(dialogue: str, data: dict, record_id: str = None) 
 
     # Логируем результат
     if eval_raw is not None:
-        logger.info(f"✅ Завершена обработка критерия '{criterion_name}' для {record_info} - оценка: {eval_raw}")
+        logger.info(f"Завершена обработка критерия '{criterion_name}' для {record_info} - оценка: {eval_raw}")
     else:
-        logger.info(f"✅ Завершена обработка критерия '{criterion_name}' для {record_info} - без оценки")
+        logger.info(f"Завершена обработка критерия '{criterion_name}' для {record_info} - без оценки")
 
     return {"text": text, "evaluation": eval_raw}
 
