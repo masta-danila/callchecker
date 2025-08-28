@@ -36,7 +36,7 @@ async def analyze_criteria(
             try:
                 # Ограничиваем параллелизм
                 async with semaphore:
-                    result = await process_client_data(dialogue, criterion)
+                    result = await process_client_data(dialogue, criterion, record_id)
                 logger.debug(f"[OK]   ID={record_id!r}, критерий={criterion.get('name')!r}, попытка={attempt}")
                 return result
             except Exception as e:

@@ -2,6 +2,10 @@ import asyncio
 import json
 from functools import partial
 from llm_router import llm_request
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('criterion_processor', 'logs/criterion_processor.log')
 
 # Пояснение
 PROMPT1 = """
@@ -19,7 +23,7 @@ PROMPT2 = """
 """
 
 
-async def process_client_data(dialogue: str, data: dict) -> dict:
+async def process_client_data(dialogue: str, data: dict, record_id: str = None) -> dict:
     """
     Асинхронная функция, принимающая на вход словарь формата:
     {
@@ -49,9 +53,16 @@ async def process_client_data(dialogue: str, data: dict) -> dict:
     """
     show_text = data.get("show_text_description", False)
     eval_crit = data.get("evaluate_criterion", False)
+    
+    criterion_name = data.get("name", "Неизвестный критерий")
+    criterion_id = data.get("id", "N/A")
+    record_info = f"запись {record_id}" if record_id else "неизвестная запись"
+    
+    logger.info(f"🔄 Начинаю обработку критерия '{criterion_name}' (ID: {criterion_id}) для {record_info}")
 
     # Если оба флага False, запрос не выполняется.
     if not show_text and not eval_crit:
+        logger.info(f"⏭️  Пропускаю критерий '{criterion_name}' - флаги show_text и evaluate_criterion отключены")
         return {"text": "", "evaluation": None}
 
     description = data.get("prompt", "")
@@ -89,6 +100,12 @@ async def process_client_data(dialogue: str, data: dict) -> dict:
         text = ""
     if not eval_crit:
         eval_raw = None
+
+    # Логируем результат
+    if eval_raw is not None:
+        logger.info(f"✅ Завершена обработка критерия '{criterion_name}' для {record_info} - оценка: {eval_raw}")
+    else:
+        logger.info(f"✅ Завершена обработка критерия '{criterion_name}' для {record_info} - без оценки")
 
     return {"text": text, "evaluation": eval_raw}
 
