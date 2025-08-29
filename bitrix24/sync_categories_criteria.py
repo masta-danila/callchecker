@@ -118,7 +118,7 @@ def sync_criterion_groups(portal_name, spreadsheet_id):
                             id_values.append([row['id']])
                         
                         # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
-                        worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
+                        worksheet.update(range_name=f'A2:A{len(updated_data)+1}', values=id_values, value_input_option='RAW')
                         logger.info(f"Обновлены ID групп критериев в Google Sheets")
                     except Exception as e:
                         logger.error(f"Не удалось обновить Google Sheets: {e}")
