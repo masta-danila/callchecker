@@ -19,7 +19,7 @@ async def safe_analyze_dialog(dialog_text, retries=3, delay=2) -> dict | None:
     for attempt in range(retries):
         try:
             result = await fix_dialog(dialog_text)
-            logger.debug(f"Диалог успешно исправлен с попытки {attempt + 1}")
+            logger.info(f"Диалог успешно исправлен с попытки {attempt + 1}")
             return result
         except Exception as e:
             logger.warning(f"Ошибка в попытке {attempt + 1}: {e}")
@@ -41,7 +41,7 @@ async def process_dialog(row, semaphore, delay, retries) -> dict | None:
     :return: Результат обработки диалога.
     """
     async with semaphore:
-        logger.debug(f"Начинаю исправление диалога {row['id']}")
+        logger.info(f"Начинаю исправление диалога {row['id']}")
         await asyncio.sleep(delay)  # Задержка перед каждым запросом
         result = await safe_analyze_dialog(row["dialogue"], retries=retries)
         if result:
