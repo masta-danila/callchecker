@@ -7,7 +7,7 @@ from logger_config import setup_logger
 logger = setup_logger('dialog_fixer_all', 'logs/dialog_fixer_all.log')
 
 
-async def safe_analyze_dialog(dialog_text, retries=3, delay=2) -> dict | None:
+async def safe_analyze_dialog(dialog_text, dialog_id=None, retries=3, delay=2) -> dict | None:
     """
     Безопасный вызов fix_dialog с повторными попытками при ошибках.
 
@@ -22,11 +22,11 @@ async def safe_analyze_dialog(dialog_text, retries=3, delay=2) -> dict | None:
 
             return result
         except Exception as e:
-            logger.warning(f"Ошибка в попытке {attempt + 1}: {e}")
+            logger.warning(f"Ошибка в попытке {attempt + 1} для диалога {dialog_id}: {e}")
             if attempt < retries - 1:
                 await asyncio.sleep(delay)
             else:
-                logger.error(f"Все {retries} попыток исправления диалога провалились")
+                logger.error(f"Все {retries} попыток исправления диалога {dialog_id} провалились")
                 return None
 
 
@@ -43,7 +43,7 @@ async def process_dialog(row, semaphore, delay, retries) -> dict | None:
     async with semaphore:
         logger.info(f"Начинаю исправление диалога {row['id']}")
         await asyncio.sleep(delay)  # Задержка перед каждым запросом
-        result = await safe_analyze_dialog(row["dialogue"], retries=retries)
+        result = await safe_analyze_dialog(row["dialogue"], dialog_id=row['id'], retries=retries)
         if result:
             cost = result.get('cost', 0)
             logger.info(f"Завершено исправление диалога {row['id']}, стоимость: {cost}")
