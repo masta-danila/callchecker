@@ -118,7 +118,7 @@ def sync_criterion_groups(portal_name, spreadsheet_id):
                             id_values.append([row['id']])
                         
                         # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
-                        worksheet.update(range_name=f'A2:A{len(updated_data)+1}', values=id_values, value_input_option='RAW')
+                        worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
                         logger.info(f"Обновлены ID групп критериев в Google Sheets")
                     except Exception as e:
                         logger.error(f"Не удалось обновить Google Sheets: {e}")
@@ -295,7 +295,7 @@ def sync_criteria(portal_name, spreadsheet_id):
                         id_values.append([row['id']])
                     
                     # Обновляем колонку A, начиная со второй строки (пропуская заголовок)
-                    worksheet.update(range_name=f'A2:A{len(updated_data)+1}', values=id_values, value_input_option='RAW')
+                    worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
                     logger.info(f"Обновлены ID критериев в Google Sheets")
                 except Exception as e:
                     logger.error(f"Не удалось обновить Google Sheets: {e}")
@@ -413,7 +413,7 @@ def sync_categories(portal_name, spreadsheet_id):
             if updated_data:
                 id_values = [[item['id']] for item in updated_data]
                 try:
-                    worksheet.update(range_name=f'A2:A{len(updated_data)+1}', values=id_values, value_input_option='RAW')
+                    worksheet.update(f'A2:A{len(updated_data)+1}', id_values, value_input_option='RAW')
                     logger.info(f"Обновлены ID категорий в Google Sheets")
                 except Exception as e:
                     logger.error(f"Ошибка при обновлении Google Sheets: {e}")
