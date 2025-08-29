@@ -25,12 +25,7 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 
-# 3. Обновляем зависимости
-echo "Обновляю зависимости..."
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# 4. Проверяем наличие .env файла
+# 3. Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
     echo "ОШИБКА: Файл .env не найден!"
     echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
@@ -39,7 +34,7 @@ else
     echo "Файл .env найден"
 fi
 
-# 5. Проверяем Google Sheets credentials
+# 4. Проверяем Google Sheets credentials
 if [ ! -f "bitrix24/google_sheets_credentials.json" ]; then
     echo "ОШИБКА: Файл bitrix24/google_sheets_credentials.json не найден!"
     echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
@@ -48,7 +43,7 @@ else
     echo "Google Sheets credentials найдены"
 fi
 
-# 6. Проверяем подключение к базе данных
+# 5. Проверяем подключение к базе данных
 echo "Проверяю подключение к базе данных..."
 python -c "
 from db_client import get_db_client
@@ -61,7 +56,7 @@ except Exception as e:
     exit(1)
 "
 
-# 7. Проверяем Google Sheets подключение
+# 6. Проверяем Google Sheets подключение
 echo "Проверяю Google Sheets подключение..."
 python -c "
 import gspread
@@ -79,7 +74,7 @@ except Exception as e:
     exit(1)
 "
 
-# 8. Создаем необходимые директории
+# 7. Создаем необходимые директории
 echo "Создаю директории для логов..."
 mkdir -p logs
 
