@@ -88,7 +88,6 @@ except Exception as e:
 # 8. Создаем необходимые директории
 echo "Создаю директории для логов..."
 mkdir -p logs
-mkdir -p bitrix24/downloads
 
 echo ""
 echo "Развертывание завершено успешно!"
