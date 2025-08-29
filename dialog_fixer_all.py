@@ -19,7 +19,7 @@ async def safe_analyze_dialog(dialog_text, retries=3, delay=2) -> dict | None:
     for attempt in range(retries):
         try:
             result = await fix_dialog(dialog_text)
-            logger.info(f"Диалог успешно исправлен с попытки {attempt + 1}")
+
             return result
         except Exception as e:
             logger.warning(f"Ошибка в попытке {attempt + 1}: {e}")
