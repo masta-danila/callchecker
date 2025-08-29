@@ -30,25 +30,19 @@ echo "Обновляю зависимости..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 4. Копируем env файл если его нет
+# 4. Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
-    echo "Создаю .env файл..."
-    if [ -f "env.production" ]; then
-        cp env.production .env
-        echo "Скопирован env.production в .env"
-    else
-        echo "Файл env.production не найден. Создайте его с правильными настройками."
-        exit 1
-    fi
+    echo "ОШИБКА: Файл .env не найден!"
+    echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
+    exit 1
 else
-    echo "Файл .env уже существует"
+    echo "Файл .env найден"
 fi
 
 # 5. Проверяем Google Sheets credentials
 if [ ! -f "bitrix24/google_sheets_credentials.json" ]; then
-    echo "Файл bitrix24/google_sheets_credentials.json не найден!"
-    echo "Скопируйте его с локального компьютера:"
-    echo "   scp bitrix24/google_sheets_credentials.json USER@SERVER:~/callchecker/bitrix24/"
+    echo "ОШИБКА: Файл bitrix24/google_sheets_credentials.json не найден!"
+    echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
     exit 1
 else
     echo "Google Sheets credentials найдены"
