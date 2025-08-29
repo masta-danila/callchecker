@@ -68,3 +68,6 @@ bitrix24/google_sheets_credentials.json
 json_tests/
 bitrix24/json_tests/
 bitrix24/downloads/
+
+# Deployment scripts
+copy_to_server.sh
