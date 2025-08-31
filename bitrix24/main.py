@@ -40,8 +40,8 @@ async def main(delay: int):
             analytics_mode=False
         )
 
-        # Сохраняем отладочные данные
-        save_debug_json(records, "records")
+        # # Сохраняем отладочные данные
+        # save_debug_json(records, "records")
         
         # Шаг 2: Скачиваем недостающие файлы
         logger.info("Шаг 2: Скачиваю недостающие файлы")
@@ -52,8 +52,8 @@ async def main(delay: int):
             retries=3
         )
         
-        # Сохраняем отладочные данные
-        save_debug_json(downloaded_records, "downloaded_records")
+        # # Сохраняем отладочные данные
+        # save_debug_json(downloaded_records, "downloaded_records")
         
         # Шаг 3: Получаем данные сущностей из Bitrix24
         logger.info("Шаг 3: Получаю данные сущностей из Bitrix24")
@@ -64,15 +64,15 @@ async def main(delay: int):
             retries=3
         )
         
-        # Сохраняем отладочные данные
-        save_debug_json(enhanced_records, "enhanced_records")
+        # # Сохраняем отладочные данные
+        # save_debug_json(enhanced_records, "enhanced_records")
         
         # Шаг 4: Обновляем сущности в БД и получаем id сущностей
         logger.info("Шаг 4: Обновляю сущности в БД")
         final_records = await update_entities_in_database(enhanced_records)
         
-        # Сохраняем финальные данные
-        save_debug_json(final_records, "final_records")
+        # # Сохраняем финальные данные
+        # save_debug_json(final_records, "final_records")
         
         # Шаг 5: Получаем данные о пользователях
         logger.info("Шаг 5: Получаю данные о пользователях")
@@ -83,8 +83,8 @@ async def main(delay: int):
             retries=3
         )
         
-        # Сохраняем полные данные
-        save_debug_json(complete_records, "complete_records")
+        # # Сохраняем полные данные
+        # save_debug_json(complete_records, "complete_records")
         
         # Шаг 6: Обновляем пользователей в БД
         logger.info("Шаг 6: Обновляю пользователей в БД")
@@ -99,15 +99,15 @@ async def main(delay: int):
             retry_delay=1.0
         )
         
-        # Сохраняем финальные данные с аудио метаданными
-        save_debug_json(processed_records, "processed_records")
+        # # Сохраняем финальные данные с аудио метаданными
+        # save_debug_json(processed_records, "processed_records")
         
         # Шаг 8: Загружаем записи в БД
         logger.info("Шаг 8: Загружаю записи в БД")
         final_result = await update_records_in_database(processed_records)
         
-        # Сохраняем финальный результат
-        save_debug_json(final_result, "final_result")
+        # # Сохраняем финальный результат
+        # save_debug_json(final_result, "final_result")
         
         # Шаг 9: Очищаем аудиофайлы после успешной загрузки в БД
         logger.info("Шаг 9: Очищаю папки с аудиофайлами после успешной загрузки в БД")
