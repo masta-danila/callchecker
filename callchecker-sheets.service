@@ -1,0 +1,17 @@
+[Unit]
+Description=Callchecker Google Sheets Synchronizer Service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=callchecker
+Group=callchecker
+WorkingDirectory=/home/callchecker/callchecker
+Environment=PATH=/home/callchecker/callchecker/venv/bin
+ExecStart=/home/callchecker/callchecker/venv/bin/python google_sheet/google_sheets_synchronizer.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
