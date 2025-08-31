@@ -13,11 +13,7 @@ if [ ! -f "requirements.txt" ]; then
     exit 1
 fi
 
-# 1. Обновляем код из Git
-echo "Обновляю код из Git..."
-git pull origin main
-
-# 2. Активируем виртуальное окружение
+# 1. Активируем виртуальное окружение
 echo "Активирую виртуальное окружение..."
 if [ ! -d "venv" ]; then
     echo "Создаю виртуальное окружение..."
@@ -25,7 +21,7 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 
-# 3. Проверяем наличие .env файла
+# 2. Проверяем наличие .env файла
 if [ ! -f ".env" ]; then
     echo "ОШИБКА: Файл .env не найден!"
     echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
@@ -34,7 +30,7 @@ else
     echo "Файл .env найден"
 fi
 
-# 4. Проверяем Google Sheets credentials
+# 3. Проверяем Google Sheets credentials
 if [ ! -f "bitrix24/google_sheets_credentials.json" ]; then
     echo "ОШИБКА: Файл bitrix24/google_sheets_credentials.json не найден!"
     echo "Запустите copy_to_server.sh с локального компьютера для копирования конфигурации"
@@ -43,7 +39,7 @@ else
     echo "Google Sheets credentials найдены"
 fi
 
-# 5. Проверяем подключение к базе данных
+# 4. Проверяем подключение к базе данных
 echo "Проверяю подключение к базе данных..."
 python -c "
 from db_client import get_db_client
@@ -56,7 +52,7 @@ except Exception as e:
     exit(1)
 "
 
-# 6. Проверяем Google Sheets подключение
+# 5. Проверяем Google Sheets подключение
 echo "Проверяю Google Sheets подключение..."
 python -c "
 import gspread
@@ -74,7 +70,7 @@ except Exception as e:
     exit(1)
 "
 
-# 7. Создаем необходимые директории
+# 6. Создаем необходимые директории
 echo "Создаю директории для логов..."
 mkdir -p logs
 
