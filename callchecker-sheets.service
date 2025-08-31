@@ -8,7 +8,7 @@ Type=simple
 User=callchecker
 Group=callchecker
 WorkingDirectory=/home/callchecker/callchecker
-Environment=PATH=/home/callchecker/callchecker/venv/bin
+Environment=PATH=/home/callchecker/callchecker/venv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/callchecker/callchecker/venv/bin/python google_sheet/google_sheets_synchronizer.py
 Restart=always
 RestartSec=10
