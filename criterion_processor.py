@@ -86,8 +86,8 @@ async def process_client_data(dialogue: str, data: dict, record_id: str = None) 
     try:
         parsed_json = json.loads(response_content)
     except json.JSONDecodeError as e:
-        print(f"Ошибка при парсинге JSON: {e}")
-        print(f"Содержимое response_content: {response_content}")
+        logger.error(f"Ошибка при парсинге JSON для критерия '{criterion_name}' (ID: {criterion_id}), {record_info}: {e}")
+        logger.error(f"Содержимое response_content: {response_content}")
         raise
 
     text = parsed_json.get("text")

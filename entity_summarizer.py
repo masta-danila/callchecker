@@ -1,5 +1,9 @@
 import asyncio
 from sum_texts import sum_text_blocks
+from logger_config import setup_logger
+
+# Настройка логгера для этого модуля
+logger = setup_logger('entity_summarizer', 'logs/entity_summarizer.log')
 
 
 async def summarize_entity_descriptions(
@@ -82,7 +86,7 @@ async def summarize_entity_descriptions(
             
             # Если есть критерии для обработки, добавляем задачу в список
             if criteria_to_process:
-                print(f"Планирую обработку сущности {entity_id} в таблице {table_name}: {len(criteria_to_process)} критериев")
+                logger.info(f"Планирую обработку сущности {entity_id} в таблице {table_name}: {len(criteria_to_process)} критериев")
                 tasks.append(_update_entity_data(
                     data_dict, table_name, entity_id, criteria_to_process, 
                     max_text_size, max_concurrent_requests, request_delay, retries
@@ -90,9 +94,9 @@ async def summarize_entity_descriptions(
     
     # Выполняем все задачи параллельно
     if tasks:
-        print(f"Запускаю параллельную обработку {len(tasks)} сущностей...")
+        logger.info(f"Запускаю параллельную обработку {len(tasks)} сущностей...")
         await asyncio.gather(*tasks)
-        print("Параллельная обработка сущностей завершена!")
+        logger.info("Параллельная обработка сущностей завершена!")
     
     return data_dict
 
@@ -181,14 +185,14 @@ async def _update_entity_data(data_dict, table_name, entity_id, criteria_to_proc
                         result = await sum_text_blocks(text_eval_pairs, max_size=max_text_size)
                         final_text = result.get("text_result", "")
                         final_eval = result.get("evaluation_result")
-                        print(f"[OK]   Entity={entity_id}, критерий={criterion_definition.get('name')!r}, попытка={attempt}")
+                        logger.debug(f"[OK]   Entity={entity_id}, критерий={criterion_definition.get('name')!r}, попытка={attempt}")
                         break
                     except Exception as e:
-                        print(f"[ERR]  Entity={entity_id}, критерий={criterion_definition.get('name')!r}, попытка={attempt}: {e}")
+                        logger.warning(f"[ERR]  Entity={entity_id}, критерий={criterion_definition.get('name')!r}, попытка={attempt}: {e}")
                         if attempt < retries:
                             await asyncio.sleep(request_delay)
                         else:
-                            print(f"[FAIL] Entity={entity_id}, критерий={criterion_definition.get('name')!r} — исчерпаны все {retries} попыток")
+                            logger.error(f"[FAIL] Entity={entity_id}, критерий={criterion_definition.get('name')!r} — исчерпаны все {retries} попыток")
                             final_text = ""
                             final_eval = None
             
@@ -204,11 +208,11 @@ async def _update_entity_data(data_dict, table_name, entity_id, criteria_to_proc
             if existing_criterion:
                 # Обновляем существующий
                 existing_criterion.update(final_criterion)
-                print(f"Обновлен критерий {criterion_definition.get('name')!r} для сущности {entity_id}")
+                logger.info(f"Обновлен критерий {criterion_definition.get('name')!r} для сущности {entity_id}")
             else:
                 # Добавляем новый
                 existing_criteria.append(final_criterion)
-                print(f"Добавлен критерий {criterion_definition.get('name')!r} для сущности {entity_id}")
+                logger.info(f"Добавлен критерий {criterion_definition.get('name')!r} для сущности {entity_id}")
 
 
 # Пример использования
@@ -220,17 +224,17 @@ if __name__ == "__main__":
         with open('json_tests/analyzed_records.json', 'r', encoding='utf-8') as f:
             test_data = json.load(f)
         
-        print("Загружены данные из analyzed_records.json:")
+        logger.info("Загружены данные из analyzed_records.json:")
         for table_name, table_data in test_data.items():
             records_count = len(table_data.get("records", []))
             entities_count = len(table_data.get("entities", []))
-            print(f"  {table_name}: {records_count} records, {entities_count} entities")
+            logger.info(f"  {table_name}: {records_count} records, {entities_count} entities")
         
-        print("=== ТЕСТ: Суммирование критериев сущностей ===")
+        logger.info("=== ТЕСТ: Суммирование критериев сущностей ===")
         
         result = await summarize_entity_descriptions(test_data)
         
-        print("\n=== РЕЗУЛЬТАТ ===")
-        print("Обработка завершена успешно!")
+        logger.info("\n=== РЕЗУЛЬТАТ ===")
+        logger.info("Обработка завершена успешно!")
 
     asyncio.run(main())
