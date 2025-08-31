@@ -118,4 +118,4 @@ async def main(delay: int):
     
 
 if __name__ == "__main__":
-    asyncio.run(main(delay=120))
+    asyncio.run(main(delay=600))

@@ -62,4 +62,4 @@ async def main(sleep_time: int):
 
 if __name__ == "__main__":
     # Можно запускать с разным временем задержки.
-    asyncio.run(main(sleep_time=60))
+    asyncio.run(main(sleep_time=600))
